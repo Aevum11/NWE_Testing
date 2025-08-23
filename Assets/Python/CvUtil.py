@@ -8,6 +8,13 @@ import traceback  # for error reporting
 from CvPythonExtensions import *
 import ScreenResolution as SR
 
+# Unicode compatibility for cross-runtime resilience
+try:
+    unicode
+except NameError:
+    # Python 3 compatibility (for linting/tools)
+    unicode = str
+
 # Constants
 INITIAL_EVENT_ID = 9999
 BUG_FIRST_SCREEN = 1000
@@ -27,7 +34,6 @@ GC = CyGlobalContext()
 CyIF = CyInterface()
 TRNSLTR = CyTranslator()
 
-# Thread-safe ID generation with simple locking mechanism
 # Simple thread safety for Python 2.4 compatibility
 try:
     import threading
@@ -103,10 +109,11 @@ def _write_unicode_safe(mgr_method_unicode, mgr_method_normal, content):
 
 
 class RedirectDebug:
-    """Send Debug Messages to Civ Engine"""
+    """Send Debug Messages to Civ Engine - file-like interface"""
 
     def __init__(self):
         self.m_PythonMgr = CyPythonMgr()
+        self.encoding = 'utf-8'  # Standard encoding attribute
 
     def write(self, stuff):
         """Write debug message, handling unicode appropriately"""
@@ -116,12 +123,21 @@ class RedirectDebug:
             stuff
         )
 
+    def flush(self):
+        """No-op flush for file-like interface compatibility"""
+        pass
+
+    def isatty(self):
+        """Return False as this is not a terminal"""
+        return False
+
 
 class RedirectError:
-    """Send Error Messages to Civ Engine"""
+    """Send Error Messages to Civ Engine - file-like interface"""
 
     def __init__(self):
         self.m_PythonMgr = CyPythonMgr()
+        self.encoding = 'utf-8'  # Standard encoding attribute
 
     def write(self, stuff):
         """Write error message, handling unicode appropriately"""
@@ -131,11 +147,20 @@ class RedirectError:
             stuff
         )
 
+    def flush(self):
+        """No-op flush for file-like interface compatibility"""
+        pass
+
+    def isatty(self):
+        """Return False as this is not a terminal"""
+        return False
+
 
 def myExceptHook(exc_type, exc_value, exc_tb):
     """
     Custom exception hook with proper error handling.
     Safely formats and reports exceptions even if traceback formatting fails.
+    Also routes errors to in-game error log.
     """
     try:
         lines = traceback.format_exception(exc_type, exc_value, exc_tb)
@@ -147,11 +172,25 @@ def myExceptHook(exc_type, exc_value, exc_tb):
         except Exception:
             error_msg = "Critical exception occurred but could not be formatted"
 
+    # Route to stderr
     try:
         sys.stderr.write(error_msg)
     except Exception:
-        # Last resort - try to write minimal error info
         pass
+
+    # Also route to in-game error log
+    try:
+        python_mgr = CyPythonMgr()
+        if isinstance(error_msg, unicode):
+            python_mgr.errorMsgWide(error_msg)
+        else:
+            python_mgr.errorMsg(error_msg)
+    except Exception:
+        pass
+
+
+# Register the exception hook
+sys.excepthook = myExceptHook
 
 
 def _add_combat_message_if_nonzero(player, text_key, value, change):
@@ -168,186 +207,166 @@ def _add_combat_message_if_nonzero(player, text_key, value, change):
 def combatDetailMessageBuilder(cdUnit, ePlayer, iChange):
     """
     Builds detailed combat messages for a unit.
-    Optimized version with reduced redundancy and better memory usage.
+    Optimized version using helper function to reduce boilerplate.
     """
     if not cdUnit:
         return  # Input validation
 
-    # Cache frequently used objects
-    add_msg = CyIF.addCombatMessage
-    get_text = TRNSLTR.getText
+    # Use helper function to reduce boilerplate and improve maintainability
+    add_msg_if_nonzero = _add_combat_message_if_nonzero
 
-    # Process modifiers individually to handle attribute access safely
-    if hasattr(cdUnit, 'iExtraCombatPercent') and cdUnit.iExtraCombatPercent:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_EXTRA_COMBAT_PERCENT", (cdUnit.iExtraCombatPercent * iChange,))
-        add_msg(ePlayer, msg)
+    # Process modifiers using helper function
+    if hasattr(cdUnit, 'iExtraCombatPercent'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_EXTRA_COMBAT_PERCENT", cdUnit.iExtraCombatPercent, iChange)
 
-    if hasattr(cdUnit, 'iAnimalCombatModifierTA') and cdUnit.iAnimalCombatModifierTA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_ANIMAL_COMBAT", (cdUnit.iAnimalCombatModifierTA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAnimalCombatModifierTA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_ANIMAL_COMBAT", cdUnit.iAnimalCombatModifierTA, iChange)
 
-    if hasattr(cdUnit, 'iAIAnimalCombatModifierTA') and cdUnit.iAIAnimalCombatModifierTA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_AI_ANIMAL_COMBAT", (cdUnit.iAIAnimalCombatModifierTA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAIAnimalCombatModifierTA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_AI_ANIMAL_COMBAT", cdUnit.iAIAnimalCombatModifierTA,
+                           iChange)
 
-    if hasattr(cdUnit, 'iAnimalCombatModifierAA') and cdUnit.iAnimalCombatModifierAA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_ANIMAL_COMBAT", (cdUnit.iAnimalCombatModifierAA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAnimalCombatModifierAA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_ANIMAL_COMBAT", cdUnit.iAnimalCombatModifierAA, iChange)
 
-    if hasattr(cdUnit, 'iAIAnimalCombatModifierAA') and cdUnit.iAIAnimalCombatModifierAA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_AI_ANIMAL_COMBAT", (cdUnit.iAIAnimalCombatModifierAA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAIAnimalCombatModifierAA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_AI_ANIMAL_COMBAT", cdUnit.iAIAnimalCombatModifierAA,
+                           iChange)
 
-    if hasattr(cdUnit, 'iBarbarianCombatModifierTB') and cdUnit.iBarbarianCombatModifierTB:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_BARBARIAN_COMBAT", (cdUnit.iBarbarianCombatModifierTB * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iBarbarianCombatModifierTB'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_BARBARIAN_COMBAT", cdUnit.iBarbarianCombatModifierTB,
+                           iChange)
 
-    if hasattr(cdUnit, 'iAIBarbarianCombatModifierTB') and cdUnit.iAIBarbarianCombatModifierTB:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_BARBARIAN_AI_COMBAT", (cdUnit.iAIBarbarianCombatModifierTB * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAIBarbarianCombatModifierTB'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_BARBARIAN_AI_COMBAT", cdUnit.iAIBarbarianCombatModifierTB,
+                           iChange)
 
-    if hasattr(cdUnit, 'iBarbarianCombatModifierAB') and cdUnit.iBarbarianCombatModifierAB:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_BARBARIAN_COMBAT", (cdUnit.iBarbarianCombatModifierAB * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iBarbarianCombatModifierAB'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_BARBARIAN_COMBAT", cdUnit.iBarbarianCombatModifierAB,
+                           iChange)
 
-    if hasattr(cdUnit, 'iAIBarbarianCombatModifierAB') and cdUnit.iAIBarbarianCombatModifierAB:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_BARBARIAN_AI_COMBAT", (cdUnit.iAIBarbarianCombatModifierAB * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAIBarbarianCombatModifierAB'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_BARBARIAN_AI_COMBAT", cdUnit.iAIBarbarianCombatModifierAB,
+                           iChange)
 
-    if hasattr(cdUnit, 'iPlotDefenseModifier') and cdUnit.iPlotDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_PLOT_DEFENSE", (cdUnit.iPlotDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iPlotDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_PLOT_DEFENSE", cdUnit.iPlotDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iFortifyModifier') and cdUnit.iFortifyModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_FORTIFY", (cdUnit.iFortifyModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iFortifyModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_FORTIFY", cdUnit.iFortifyModifier, iChange)
 
-    if hasattr(cdUnit, 'iCityDefenseModifier') and cdUnit.iCityDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CITY_DEFENSE", (cdUnit.iCityDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iCityDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CITY_DEFENSE", cdUnit.iCityDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iHillsAttackModifier') and cdUnit.iHillsAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_HILLS_ATTACK", (cdUnit.iHillsAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iHillsAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_HILLS_ATTACK", cdUnit.iHillsAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iHillsDefenseModifier') and cdUnit.iHillsDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_HILLS", (cdUnit.iHillsDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iHillsDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_HILLS", cdUnit.iHillsDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iFeatureAttackModifier') and cdUnit.iFeatureAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_FEATURE_ATTACK", (cdUnit.iFeatureAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iFeatureAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_FEATURE_ATTACK", cdUnit.iFeatureAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iFeatureDefenseModifier') and cdUnit.iFeatureDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_FEATURE", (cdUnit.iFeatureDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iFeatureDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_FEATURE", cdUnit.iFeatureDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iTerrainAttackModifier') and cdUnit.iTerrainAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_TERRAIN_ATTACK", (cdUnit.iTerrainAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iTerrainAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_TERRAIN_ATTACK", cdUnit.iTerrainAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iTerrainDefenseModifier') and cdUnit.iTerrainDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_TERRAIN", (cdUnit.iTerrainDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iTerrainDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_TERRAIN", cdUnit.iTerrainDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iCityAttackModifier') and cdUnit.iCityAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CITY_ATTACK", (cdUnit.iCityAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iCityAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CITY_ATTACK", cdUnit.iCityAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iDomainDefenseModifier') and cdUnit.iDomainDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_DOMAIN_DEFENSE", (cdUnit.iDomainDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iDomainDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_DOMAIN_DEFENSE", cdUnit.iDomainDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iCityBarbarianDefenseModifier') and cdUnit.iCityBarbarianDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CITY_BARBARIAN_DEFENSE",
-                       (cdUnit.iCityBarbarianDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iCityBarbarianDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CITY_BARBARIAN_DEFENSE",
+                           cdUnit.iCityBarbarianDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iDefenseModifier') and cdUnit.iDefenseModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_DEFENSE", (cdUnit.iDefenseModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iDefenseModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_DEFENSE", cdUnit.iDefenseModifier, iChange)
 
-    if hasattr(cdUnit, 'iAttackModifier') and cdUnit.iAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_ATTACK", (cdUnit.iAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_ATTACK", cdUnit.iAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iCombatModifierT') and cdUnit.iCombatModifierT:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_COMBAT", (cdUnit.iCombatModifierT * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iCombatModifierT'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_COMBAT", cdUnit.iCombatModifierT, iChange)
 
-    if hasattr(cdUnit, 'iCombatModifierA') and cdUnit.iCombatModifierA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_COMBAT", (cdUnit.iCombatModifierA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iCombatModifierA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_COMBAT", cdUnit.iCombatModifierA, iChange)
 
-    if hasattr(cdUnit, 'iDomainModifierA') and cdUnit.iDomainModifierA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_DOMAIN", (cdUnit.iDomainModifierA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iDomainModifierA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_DOMAIN", cdUnit.iDomainModifierA, iChange)
 
-    if hasattr(cdUnit, 'iDomainModifierT') and cdUnit.iDomainModifierT:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_DOMAIN", (cdUnit.iDomainModifierT * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iDomainModifierT'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_DOMAIN", cdUnit.iDomainModifierT, iChange)
 
-    if hasattr(cdUnit, 'iAnimalCombatModifierA') and cdUnit.iAnimalCombatModifierA:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_ANIMAL_COMBAT", (cdUnit.iAnimalCombatModifierA * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAnimalCombatModifierA'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_ANIMAL_COMBAT", cdUnit.iAnimalCombatModifierA,
+                           iChange)
 
-    if hasattr(cdUnit, 'iAnimalCombatModifierT') and cdUnit.iAnimalCombatModifierT:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_ANIMAL_COMBAT", (cdUnit.iAnimalCombatModifierT * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAnimalCombatModifierT'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_ANIMAL_COMBAT", cdUnit.iAnimalCombatModifierT,
+                           iChange)
 
-    if hasattr(cdUnit, 'iRiverAttackModifier') and cdUnit.iRiverAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_RIVER_ATTACK", (cdUnit.iRiverAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iRiverAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_RIVER_ATTACK", cdUnit.iRiverAttackModifier, iChange)
 
-    if hasattr(cdUnit, 'iAmphibAttackModifier') and cdUnit.iAmphibAttackModifier:
-        msg = get_text("TXT_KEY_COMBAT_MESSAGE_CLASS_AMPHIB_ATTACK", (cdUnit.iAmphibAttackModifier * iChange,))
-        add_msg(ePlayer, msg)
+    if hasattr(cdUnit, 'iAmphibAttackModifier'):
+        add_msg_if_nonzero(ePlayer, "TXT_KEY_COMBAT_MESSAGE_CLASS_AMPHIB_ATTACK", cdUnit.iAmphibAttackModifier, iChange)
 
 
 def combatMessageBuilder(cdAttacker, cdDefender, iCombatOdds):
     """
     Builds combat messages between attacker and defender.
-    Optimized for memory efficiency using list joining instead of concatenation.
+    Optimized for memory efficiency and encoding safety.
+    Avoids duplicate messages to same player.
     """
     if not cdAttacker or not cdDefender:
         return  # Input validation
 
-    # Validate combat strength to prevent division issues
-    attacker_str = cdAttacker.iCurrCombatStr if cdAttacker.iCurrCombatStr else 1
-    defender_str = cdDefender.iCurrCombatStr if cdDefender.iCurrCombatStr else 1
+    # Safer strength access with fallbacks
+    attacker_str = max(1, getattr(cdAttacker, 'iCurrCombatStr', 0))
+    defender_str = max(1, getattr(cdDefender, 'iCurrCombatStr', 0))
 
-    # Build combat message efficiently using list joining
+    # Build combat message efficiently using Unicode-safe list joining
     message_parts = []
 
     # Attacker info
     if cdAttacker.eOwner == cdAttacker.eVisualOwner:
         attacker_owner = GC.getPlayer(cdAttacker.eOwner).getName()
-        message_parts.append("%s's " % attacker_owner)
+        message_parts.append(u"%s's " % unicode(attacker_owner))
 
-    message_parts.append("%s (%.2f)" % (cdAttacker.sUnitName, attacker_str / 100.0))
-    message_parts.append(" " + TRNSLTR.getText("TXT_KEY_COMBAT_MESSAGE_VS", ()) + " ")
+    message_parts.append(u"%s (%.2f)" % (unicode(cdAttacker.sUnitName), attacker_str / 100.0))
+    message_parts.append(u" " + unicode(TRNSLTR.getText("TXT_KEY_COMBAT_MESSAGE_VS", ())) + u" ")
 
     # Defender info
     if cdDefender.eOwner == cdDefender.eVisualOwner:
         defender_owner = GC.getPlayer(cdDefender.eOwner).getName()
-        message_parts.append("%s's " % defender_owner)
+        message_parts.append(u"%s's " % unicode(defender_owner))
 
-    message_parts.append("%s (%.2f)" % (cdDefender.sUnitName, defender_str / 100.0))
+    message_parts.append(u"%s (%.2f)" % (unicode(cdDefender.sUnitName), defender_str / 100.0))
 
-    # Join all parts efficiently
-    combat_message = "".join(message_parts)
+    # Join all parts efficiently with Unicode
+    combat_message = u"".join(message_parts)
 
-    # Send main combat message to both players
-    CyIF.addCombatMessage(cdAttacker.eOwner, combat_message)
-    CyIF.addCombatMessage(cdDefender.eOwner, combat_message)
+    # Collect unique players to avoid duplicate messages
+    players_to_notify = set([cdAttacker.eOwner, cdDefender.eOwner])
 
-    # Send odds message
-    odds_message = "%s %.1f%%" % (
-        TRNSLTR.getText("TXT_KEY_COMBAT_MESSAGE_ODDS", ()),
+    # Send main combat message to all unique players
+    for player in players_to_notify:
+        CyIF.addCombatMessage(player, combat_message)
+
+    # Send odds message to all unique players
+    odds_message = u"%s %.1f%%" % (
+        unicode(TRNSLTR.getText("TXT_KEY_COMBAT_MESSAGE_ODDS", ())),
         iCombatOdds / 10.0
     )
-    CyIF.addCombatMessage(cdAttacker.eOwner, odds_message)
-    CyIF.addCombatMessage(cdDefender.eOwner, odds_message)
+    for player in players_to_notify:
+        CyIF.addCombatMessage(player, odds_message)
 
     # Send detailed combat messages
     combatDetailMessageBuilder(cdAttacker, cdAttacker.eOwner, -1)
@@ -356,13 +375,26 @@ def combatMessageBuilder(cdAttacker, cdDefender, iCombatOdds):
     combatDetailMessageBuilder(cdDefender, cdDefender.eOwner, 1)
 
 
+def _get_safe_font_prefix():
+    """
+    Safely get font prefix with fallback to avoid crashes.
+    """
+    try:
+        if hasattr(SR, 'aFontList') and len(SR.aFontList) > 5:
+            return SR.aFontList[5]
+        else:
+            return u""  # Safe fallback
+    except (IndexError, AttributeError):
+        return u""
+
+
 def sendMessage(szTxt, iPlayer=None, iTime=DEFAULT_MESSAGE_TIME, szIcon=None,
                 eColor=DEFAULT_MESSAGE_COLOR, iMapX=DEFAULT_MAP_COORDS,
                 iMapY=DEFAULT_MAP_COORDS, bOffArrow=False, bOnArrow=False,
                 eMsgType=0, szSound=None, bForce=True):
     """
     Centralized function for displaying messages in the message box.
-    Enhanced with input validation and cleaner parameter handling.
+    Enhanced with input validation, encoding safety, and font fallback.
     """
     if not szTxt:
         return  # No message to send
@@ -385,8 +417,11 @@ def sendMessage(szTxt, iPlayer=None, iTime=DEFAULT_MESSAGE_TIME, szIcon=None,
         iMapX = iMapY = iTime = -1
         bForce = bOffArrow = bOnArrow = False
 
-    # Send the message with proper font formatting
-    formatted_text = SR.aFontList[5] + szTxt
+    # Safe font prefix and Unicode normalization
+    font_prefix = _get_safe_font_prefix()
+    formatted_text = unicode(font_prefix) + unicode(szTxt)
+
+    # Send the message
     CyIF.addMessage(iPlayer, bForce, iTime, formatted_text, szSound, eMsgType,
                     szIcon, eColor, iMapX, iMapY, bOffArrow, bOnArrow)
 
@@ -394,8 +429,13 @@ def sendMessage(szTxt, iPlayer=None, iTime=DEFAULT_MESSAGE_TIME, szIcon=None,
 def sendImmediateMessage(szTxt, szSound=None):
     """
     Sends an immediate message to the interface.
-    Enhanced with input validation.
+    Enhanced with input validation and encoding safety.
     """
-    if szTxt:
-        formatted_text = SR.aFontList[5] + szTxt
-        CyIF.addImmediateMessage(formatted_text, szSound)
+    if not szTxt:
+        return  # No message to send
+
+    # Safe font prefix and Unicode normalization
+    font_prefix = _get_safe_font_prefix()
+    formatted_text = unicode(font_prefix) + unicode(szTxt)
+
+    CyIF.addImmediateMessage(formatted_text, szSound)
