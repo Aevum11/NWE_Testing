@@ -13,7 +13,7 @@ def safeConvertToStr(obj):
         # In Python 2.4, this will help catch unicode/str mixing issues
         str(result)
         return result
-    except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
+    except UnicodeError:
         # If TextUtil fails with unicode issues, try fallbacks on the result
         if result is not None:
             return _encodeFallback(result)
@@ -30,13 +30,19 @@ def safeConvertToStr(obj):
 def _encodeFallback(obj):
     """Fallback encoding logic for string conversion."""
     try:
-        if hasattr(obj, 'encode'):
-            # It's likely a unicode object, encode to ASCII with replacement
+        if isinstance(obj, unicode):
+            # Unicode object, encode to ASCII with replacement
             return obj.encode('ascii', 'replace')
+        elif hasattr(obj, 'decode'):
+            # 8-bit str that might need decoding first
+            try:
+                return obj.decode('utf-8', 'replace').encode('ascii', 'replace')
+            except UnicodeError:
+                return obj.decode('latin-1', 'replace').encode('ascii', 'replace')
         else:
-            # Not a unicode object, try direct conversion
+            # Not a string-like object, try direct conversion
             return str(obj)
-    except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError, AttributeError):
+    except (UnicodeError, AttributeError, TypeError):
         return "[Name conversion failed]"
 
 
@@ -54,6 +60,10 @@ def sanitizeFilename(filename):
     # Remove control characters (ASCII 0-31 and 127)
     filename = ''.join(char if ord(char) >= 32 and ord(char) != 127 else '_' for char in filename)
 
+    # Handle leading dots (hidden files on Unix, problematic on Windows)
+    if filename.startswith('.'):
+        filename = '_' + filename[1:]
+
     # Handle Windows reserved names
     name_upper = filename.upper()
     if name_upper in reserved_names or name_upper.split('.')[0] in reserved_names:
@@ -61,6 +71,11 @@ def sanitizeFilename(filename):
 
     # Remove trailing dots and spaces (Windows issue)
     filename = filename.rstrip('. ')
+
+    # Clamp length to Windows-safe limit (255 chars, leave some buffer)
+    if len(filename) > 200:
+        name, ext = os.path.splitext(filename)
+        filename = name[:200 - len(ext)] + ext
 
     # Ensure we have at least one character
     if not filename:
@@ -75,7 +90,7 @@ def writeLog():
     MAP = GC.getMap()
     GAME = GC.getGame()
     iActivePlayer = GAME.getActivePlayer()
-    szName = sanitizeFilename(safeConvertToStr(GC.getPlayer(iActivePlayer).getName()))
+    playerName = safeConvertToStr(GC.getPlayer(iActivePlayer).getName())
 
     # Ensure logs directory exists
     log_dir = os.path.join(SP.userDir, "Logs")
@@ -86,7 +101,10 @@ def writeLog():
         # If we can't create the directory, try writing to user directory directly
         log_dir = SP.userDir
 
-    szName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (szName, iActivePlayer, GAME.getGameTurn()))
+    # Create filename with player info, then sanitize the entire filename
+    filename = "%s - Player %d - Turn %d OOSLog.txt" % (playerName, iActivePlayer, GAME.getGameTurn())
+    filename = sanitizeFilename(filename)
+    szName = os.path.join(log_dir, filename)
 
     # Initialize pFile as None for safer cleanup
     pFile = None
@@ -248,7 +266,7 @@ def writeLog():
                                 unitai_label = safeConvertToStr(unitai_info.getDescription())
                             else:
                                 unitai_label = safeConvertToStr(unitai_info.getType())
-                        except:
+                        except AttributeError:
                             unitai_label = "UnitAI_%d" % iUnitAIType
                         pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitai_label,
                                                                                  pPlayer.AI_totalUnitAIs(
