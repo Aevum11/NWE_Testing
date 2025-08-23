@@ -13,28 +13,36 @@ def safeConvertToStr(obj):
         str(result)
         return result
     except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
-        # If TextUtil fails with unicode issues, try fallbacks
+        # If TextUtil fails with unicode issues, try fallbacks on the result
         try:
-            if hasattr(obj, 'encode'):
+            if hasattr(result, 'encode'):
                 # It's likely a unicode object, encode to ASCII with replacement
-                return obj.encode('ascii', 'replace')
+                return result.encode('ascii', 'replace')
             else:
                 # Not a unicode object, try direct conversion
-                return str(obj)
-        except:
+                return str(result)
+        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError, AttributeError):
             return "[Name conversion failed]"
     except (ImportError, AttributeError):
         # TextUtil module missing or doesn't have convertToStr method
         try:
             return str(obj)
-        except:
+        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
             return "[Name conversion failed]"
-    except:
+    except Exception:
         # Any other error from TextUtil
         try:
             return str(obj)
-        except:
+        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
             return "[Name conversion failed]"
+
+
+def sanitizeFilename(filename):
+    """Remove or replace characters that are invalid in filenames on common OS."""
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        filename = filename.replace(char, '_')
+    return filename
 
 
 def writeLog():
@@ -43,7 +51,7 @@ def writeLog():
     MAP = GC.getMap()
     GAME = GC.getGame()
     iActivePlayer = GAME.getActivePlayer()
-    szName = safeConvertToStr(GC.getActivePlayer().getName())
+    szName = sanitizeFilename(safeConvertToStr(GC.getPlayer(iActivePlayer).getName()))
 
     # Ensure logs directory exists
     log_dir = os.path.join(SP.userDir, "Logs")
@@ -109,7 +117,7 @@ def writeLog():
                     pFile.write("Player %d Num Units: %d\n" % (iPlayer, pPlayer.getNumUnits()))
                     pFile.write(
                         "Player %d Num Selection Groups: %d\n" % (iPlayer, pPlayer.getNumSelectionGroups()))
-                    pFile.write("Player %d Difficulty: %d\n" % (iPlayer, pPlayer.getHandicapType()))
+                    pFile.write("Player %d Difficulty: %s\n" % (iPlayer, safeConvertToStr(GC.getHandicapInfo(pPlayer.getHandicapType()).getDescription())))
                     pFile.write("Player %d State Religion: %s\n" % (iPlayer, safeConvertToStr(
                         pPlayer.getStateReligionKey())))
                     pFile.write("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
@@ -165,7 +173,7 @@ def writeLog():
                             pFile.write("Food: %d\n" % pCity.getFood())
                             pCity, i = pPlayer.nextCity(i, False)
                     else:
-                        pFile.write("No Cities")
+                        pFile.write("No Cities\n")
 
                     pFile.write("\n\nBonus Info:\n-----------\n")
 
@@ -209,8 +217,8 @@ def writeLog():
                     pFile.write("\n\nUnitAI Types Info:\n------------------\n")
 
                     for iUnitAIType in xrange(int(UnitAITypes.NUM_UNITAI_TYPES)):
-                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, GC.getUnitAIInfo(
-                            iUnitAIType).getType(), pPlayer.AI_totalUnitAIs(UnitAITypes(iUnitAIType))))
+                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, safeConvertToStr(GC.getUnitAIInfo(
+                            iUnitAIType).getType()), pPlayer.AI_totalUnitAIs(UnitAITypes(iUnitAIType))))
 
                     pFile.write("\n\nCity Religions:\n-----------\n")
 
