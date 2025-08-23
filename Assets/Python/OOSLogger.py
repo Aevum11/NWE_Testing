@@ -10,7 +10,7 @@ def safeConvertToStr(obj):
         result = TextUtil.convertToStr(obj)
         # Test if the result can be used safely by attempting string operations
         # In Python 2.4, this will help catch unicode/str mixing issues
-        temp = str(result)
+        str(result)
         return result
     except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
         # If TextUtil fails with unicode issues, try fallbacks
@@ -46,7 +46,7 @@ def writeLog():
     szName = safeConvertToStr(GC.getActivePlayer().getName())
 
     # Ensure logs directory exists
-    log_dir = SP.userDir + "\\Logs"
+    log_dir = os.path.join(SP.userDir, "Logs")
     try:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
@@ -54,7 +54,7 @@ def writeLog():
         # If we can't create the directory, try writing to user directory directly
         log_dir = SP.userDir
 
-    szName = log_dir + "\\%s - Player %d - Turn %d OOSLog.txt" % (szName, iActivePlayer, GAME.getGameTurn())
+    szName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (szName, iActivePlayer, GAME.getGameTurn()))
 
     # Initialize pFile as None for safer cleanup
     pFile = None
@@ -91,43 +91,43 @@ def writeLog():
                 pPlayer = GC.getPlayer(iPlayer)
                 if pPlayer.isEverAlive():
 
-                    log_content.append(2 * SEP + "%s player %d: %s\n" % (['NPC', 'Human'][pPlayer.isHuman()], iPlayer,
-                                                                         TextUtil.convertToStr(pPlayer.getName())))
-                    log_content.append(
-                        "  Civilization: %s\n" % TextUtil.convertToStr(pPlayer.getCivilizationDescriptionKey()))
-                    log_content.append("  Alive: %s\n" % pPlayer.isAlive())
+                    pFile.write(2 * SEP + "%s player %d: %s\n" % (['NPC', 'Human'][pPlayer.isHuman()], iPlayer,
+                                                                         safeConvertToStr(pPlayer.getName())))
+                    pFile.write(
+                        "  Civilization: %s\n" % safeConvertToStr(pPlayer.getCivilizationDescriptionKey()))
+                    pFile.write("  Alive: %s\n" % pPlayer.isAlive())
 
-                    log_content.append(2 * SEP + "\n\nBasic data:\n-----------\n")
+                    pFile.write(2 * SEP + "\n\nBasic data:\n-----------\n")
 
-                    log_content.append("Player %d Score: %d\n" % (iPlayer, GAME.getPlayerScore(iPlayer)))
-                    log_content.append("Player %d Population: %d\n" % (iPlayer, pPlayer.getTotalPopulation()))
-                    log_content.append("Player %d Total Land: %d\n" % (iPlayer, pPlayer.getTotalLand()))
-                    log_content.append("Player %d Gold: %d\n" % (iPlayer, pPlayer.getGold()))
-                    log_content.append("Player %d Assets: %d\n" % (iPlayer, pPlayer.getAssets()))
-                    log_content.append("Player %d Power: %d\n" % (iPlayer, pPlayer.getPower()))
-                    log_content.append("Player %d Num Cities: %d\n" % (iPlayer, pPlayer.getNumCities()))
-                    log_content.append("Player %d Num Units: %d\n" % (iPlayer, pPlayer.getNumUnits()))
-                    log_content.append(
+                    pFile.write("Player %d Score: %d\n" % (iPlayer, GAME.getPlayerScore(iPlayer)))
+                    pFile.write("Player %d Population: %d\n" % (iPlayer, pPlayer.getTotalPopulation()))
+                    pFile.write("Player %d Total Land: %d\n" % (iPlayer, pPlayer.getTotalLand()))
+                    pFile.write("Player %d Gold: %d\n" % (iPlayer, pPlayer.getGold()))
+                    pFile.write("Player %d Assets: %d\n" % (iPlayer, pPlayer.getAssets()))
+                    pFile.write("Player %d Power: %d\n" % (iPlayer, pPlayer.getPower()))
+                    pFile.write("Player %d Num Cities: %d\n" % (iPlayer, pPlayer.getNumCities()))
+                    pFile.write("Player %d Num Units: %d\n" % (iPlayer, pPlayer.getNumUnits()))
+                    pFile.write(
                         "Player %d Num Selection Groups: %d\n" % (iPlayer, pPlayer.getNumSelectionGroups()))
-                    log_content.append("Player %d Difficulty: %d\n" % (iPlayer, pPlayer.getHandicapType()))
-                    log_content.append("Player %d State Religion: %s\n" % (iPlayer, TextUtil.convertToStr(
+                    pFile.write("Player %d Difficulty: %d\n" % (iPlayer, pPlayer.getHandicapType()))
+                    pFile.write("Player %d State Religion: %s\n" % (iPlayer, safeConvertToStr(
                         pPlayer.getStateReligionKey())))
-                    log_content.append("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
+                    pFile.write("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
 
-                    log_content.append("\n\nYields:\n-------\n")
+                    pFile.write("\n\nYields:\n-------\n")
 
                     for iYield in xrange(YieldTypes.NUM_YIELD_TYPES):
-                        log_content.append("Player %d %s Total Yield: %d\n" % (iPlayer, TextUtil.convertToStr(
+                        pFile.write("Player %d %s Total Yield: %d\n" % (iPlayer, safeConvertToStr(
                             GC.getYieldInfo(iYield).getDescription()), pPlayer.calculateTotalYield(iYield)))
 
-                    log_content.append("\n\nCommerce:\n---------\n")
+                    pFile.write("\n\nCommerce:\n---------\n")
 
                     for iCommerce in xrange(CommerceTypes.NUM_COMMERCE_TYPES):
-                        log_content.append("Player %d %s Total Commerce: %d\n" % (iPlayer, TextUtil.convertToStr(
+                        pFile.write("Player %d %s Total Commerce: %d\n" % (iPlayer, safeConvertToStr(
                             GC.getCommerceInfo(iCommerce).getDescription()), pPlayer.getCommerceRate(
                             CommerceTypes(iCommerce))))
 
-                    log_content.append("\n\nCity event history:\n-----------\n")
+                    pFile.write("\n\nCity event history:\n-----------\n")
 
                     if pPlayer.getNumCities():
                         pCity, i = pPlayer.firstCity(False)
@@ -136,83 +136,83 @@ def writeLog():
                             for iEvent in xrange(GC.getNumEventInfos()):
                                 if pCity.isEventOccured(iEvent):
                                     if bFirst:
-                                        log_content.append("City: %s\n" % TextUtil.convertToStr(pCity.getName()))
+                                        pFile.write("City: %s\n" % safeConvertToStr(pCity.getName()))
                                         bFirst = False
-                                    log_content.append(
-                                        "\t" + TextUtil.convertToStr(GC.getEventInfo(iEvent).getDescription()) + "\n")
+                                    pFile.write(
+                                        "\t" + safeConvertToStr(GC.getEventInfo(iEvent).getDescription()) + "\n")
                             pCity, i = pPlayer.nextCity(i, False)
 
-                    log_content.append("\n\nCity Info:\n----------\n")
+                    pFile.write("\n\nCity Info:\n----------\n")
 
                     if pPlayer.getNumCities():
                         pCity, i = pPlayer.firstCity(False)
                         while pCity:
-                            log_content.append("City: %s\n" % TextUtil.convertToStr(pCity.getName()))
-                            log_content.append("X: %d, Y: %d\n" % (pCity.getX(), pCity.getY()))
-                            log_content.append("Population: %d\n" % (pCity.getPopulation()))
+                            pFile.write("City: %s\n" % safeConvertToStr(pCity.getName()))
+                            pFile.write("X: %d, Y: %d\n" % (pCity.getX(), pCity.getY()))
+                            pFile.write("Population: %d\n" % (pCity.getPopulation()))
                             iCount = 0
                             for iBuilding in xrange(GC.getNumBuildingInfos()):
                                 iCount += pCity.hasBuilding(iBuilding)
-                            log_content.append("Buildings: %d\n" % iCount)
-                            log_content.append("Improved Plots: %d\n" % (pCity.countNumImprovedPlots()))
-                            log_content.append("Tiles Worked: %d, Specialists: %d\n" % (pCity.getWorkingPopulation(),
+                            pFile.write("Buildings: %d\n" % iCount)
+                            pFile.write("Improved Plots: %d\n" % (pCity.countNumImprovedPlots()))
+                            pFile.write("Tiles Worked: %d, Specialists: %d\n" % (pCity.getWorkingPopulation(),
                                                                                         pCity.getSpecialistPopulation()))
-                            log_content.append("Great People: %d\n" % pCity.getNumGreatPeople())
-                            log_content.append(
+                            pFile.write("Great People: %d\n" % pCity.getNumGreatPeople())
+                            pFile.write(
                                 "Good Health: %d, Bad Health: %d\n" % (pCity.goodHealth(), pCity.badHealth(False)))
-                            log_content.append(
+                            pFile.write(
                                 "Happy Level: %d, Unhappy Level: %d\n" % (pCity.happyLevel(), pCity.unhappyLevel(0)))
-                            log_content.append("Food: %d\n" % pCity.getFood())
+                            pFile.write("Food: %d\n" % pCity.getFood())
                             pCity, i = pPlayer.nextCity(i, False)
                     else:
-                        log_content.append("No Cities")
+                        pFile.write("No Cities")
 
-                    log_content.append("\n\nBonus Info:\n-----------\n")
+                    pFile.write("\n\nBonus Info:\n-----------\n")
 
                     for iBonus in xrange(GC.getNumBonusInfos()):
-                        szTemp = TextUtil.convertToStr(GC.getBonusInfo(iBonus).getDescription())
-                        log_content.append("Player %d, %s, Number Available: %d\n" % (iPlayer, szTemp,
+                        szTemp = safeConvertToStr(GC.getBonusInfo(iBonus).getDescription())
+                        pFile.write("Player %d, %s, Number Available: %d\n" % (iPlayer, szTemp,
                                                                                       pPlayer.getNumAvailableBonuses(
                                                                                           iBonus)))
-                        log_content.append(
+                        pFile.write(
                             "Player %d, %s, Import: %d\n" % (iPlayer, szTemp, pPlayer.getBonusImport(iBonus)))
-                        log_content.append(
+                        pFile.write(
                             "Player %d, %s, Export: %d\n\n" % (iPlayer, szTemp, pPlayer.getBonusExport(iBonus)))
 
-                    log_content.append("\n\nImprovement Info:\n-----------------\n")
+                    pFile.write("\n\nImprovement Info:\n-----------------\n")
 
                     for iImprovement in xrange(GC.getNumImprovementInfos()):
-                        log_content.append("Player %d, %s, Improvement count: %d\n" % (iPlayer, TextUtil.convertToStr(
+                        pFile.write("Player %d, %s, Improvement count: %d\n" % (iPlayer, safeConvertToStr(
                             GC.getImprovementInfo(iImprovement).getDescription()), pPlayer.getImprovementCount(
                             iImprovement)))
 
-                    log_content.append("\n\nBuilding Info:\n--------------------\n")
+                    pFile.write("\n\nBuilding Info:\n--------------------\n")
 
                     for iBuilding in xrange(GC.getNumBuildingInfos()):
-                        log_content.append("Player %d, %s, Building class count plus making: %d\n" % (iPlayer,
-                                                                                                      TextUtil.convertToStr(
+                        pFile.write("Player %d, %s, Building class count plus making: %d\n" % (iPlayer,
+                                                                                                      safeConvertToStr(
                                                                                                           GC.getBuildingInfo(
                                                                                                               iBuilding).getDescription()),
                                                                                                       pPlayer.getBuildingCountPlusMaking(
                                                                                                           iBuilding)))
 
-                    log_content.append("\n\nUnit Class Info:\n--------------------\n")
+                    pFile.write("\n\nUnit Class Info:\n--------------------\n")
 
                     for iUnit in xrange(GC.getNumUnitInfos()):
-                        log_content.append("Player %d, %s, Unit class count plus training: %d\n" % (iPlayer,
-                                                                                                    TextUtil.convertToStr(
+                        pFile.write("Player %d, %s, Unit class count plus training: %d\n" % (iPlayer,
+                                                                                                    safeConvertToStr(
                                                                                                         GC.getUnitInfo(
                                                                                                             iUnit).getDescription()),
                                                                                                     pPlayer.getUnitCountPlusMaking(
                                                                                                         iUnit)))
 
-                    log_content.append("\n\nUnitAI Types Info:\n------------------\n")
+                    pFile.write("\n\nUnitAI Types Info:\n------------------\n")
 
                     for iUnitAIType in xrange(int(UnitAITypes.NUM_UNITAI_TYPES)):
-                        log_content.append("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, GC.getUnitAIInfo(
+                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, GC.getUnitAIInfo(
                             iUnitAIType).getType(), pPlayer.AI_totalUnitAIs(UnitAITypes(iUnitAIType))))
 
-                    log_content.append("\n\nCity Religions:\n-----------\n")
+                    pFile.write("\n\nCity Religions:\n-----------\n")
 
                     if pPlayer.getNumCities():
                         pCity, i = pPlayer.firstCity(False)
@@ -221,13 +221,13 @@ def writeLog():
                             for iReligion in xrange(GC.getNumReligionInfos()):
                                 if pCity.isHasReligion(iReligion):
                                     if bFirst:
-                                        log_content.append("City: %s\n" % TextUtil.convertToStr(pCity.getName()))
+                                        pFile.write("City: %s\n" % safeConvertToStr(pCity.getName()))
                                         bFirst = False
-                                    log_content.append("\t" + TextUtil.convertToStr(
+                                    pFile.write("\t" + safeConvertToStr(
                                         GC.getReligionInfo(iReligion).getDescription()) + "\n")
                             pCity, i = pPlayer.nextCity(i, False)
 
-                    log_content.append("\n\nCity Corporations:\n-----------\n")
+                    pFile.write("\n\nCity Corporations:\n-----------\n")
 
                     if pPlayer.getNumCities():
                         pCity, i = pPlayer.firstCity(False)
@@ -236,43 +236,43 @@ def writeLog():
                             for iCorporation in xrange(GC.getNumCorporationInfos()):
                                 if pCity.isHasCorporation(iCorporation):
                                     if bFirst:
-                                        log_content.append("City: %s\n" % TextUtil.convertToStr(pCity.getName()))
+                                        pFile.write("City: %s\n" % safeConvertToStr(pCity.getName()))
                                         bFirst = False
-                                    log_content.append("\t" + TextUtil.convertToStr(
+                                    pFile.write("\t" + safeConvertToStr(
                                         GC.getCorporationInfo(iCorporation).getDescription()) + "\n")
                             pCity, i = pPlayer.nextCity(i, False)
 
-                    log_content.append("\n\nUnit Info:\n----------\n")
+                    pFile.write("\n\nUnit Info:\n----------\n")
 
                     if pPlayer.getNumUnits():
                         for pUnit in pPlayer.units():
-                            log_content.append("Player %d, Unit ID: %d, %s\n" % (iPlayer, pUnit.getID(),
-                                                                                 TextUtil.convertToStr(
+                            pFile.write("Player %d, Unit ID: %d, %s\n" % (iPlayer, pUnit.getID(),
+                                                                                 safeConvertToStr(
                                                                                      pUnit.getName())))
-                            log_content.append(
+                            pFile.write(
                                 "X: %d, Y: %d\nDamage: %d\n" % (pUnit.getX(), pUnit.getY(), pUnit.getDamage()))
-                            log_content.append(
+                            pFile.write(
                                 "Experience: %d\nLevel: %d\n" % (pUnit.getExperience(), pUnit.getLevel()))
                             bFirst = True
                             for j in xrange(GC.getNumPromotionInfos()):
                                 if pUnit.isHasPromotion(j):
                                     if bFirst:
-                                        log_content.append("Promotions:\n")
+                                        pFile.write("Promotions:\n")
                                         bFirst = False
-                                    log_content.append(
-                                        "\t" + TextUtil.convertToStr(GC.getPromotionInfo(j).getDescription()) + "\n")
+                                    pFile.write(
+                                        "\t" + safeConvertToStr(GC.getPromotionInfo(j).getDescription()) + "\n")
                             bFirst = True
                             for j in xrange(GC.getNumUnitCombatInfos()):
                                 if pUnit.isHasUnitCombat(j):
                                     if bFirst:
-                                        log_content.append("UnitCombats:\n")
+                                        pFile.write("UnitCombats:\n")
                                         bFirst = False
-                                    log_content.append(
-                                        "\t" + TextUtil.convertToStr(GC.getUnitCombatInfo(j).getDescription()) + "\n")
+                                    pFile.write(
+                                        "\t" + safeConvertToStr(GC.getUnitCombatInfo(j).getDescription()) + "\n")
                     else:
-                        log_content.append("No Units")
+                        pFile.write("No Units")
                     # Space at end of player's info
-                    log_content.append("\n\n")
+                    pFile.write("\n\n")
 
         finally:
             # Restore current language even if an error occurs
