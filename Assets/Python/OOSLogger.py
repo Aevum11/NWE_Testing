@@ -30,9 +30,19 @@ def safeConvertToStr(obj):
 def _encodeFallback(obj):
     """Fallback encoding logic for string conversion."""
     try:
-        # Safe probe for Unicode type (works in Python 2.4 without importing unicode)
+        # Safer short-circuit: explicit unicode check when available
+        try:
+            # Try to access unicode type safely
+            unicode_type = type(u'')
+            if isinstance(obj, unicode_type):
+                return obj.encode('ascii', 'replace')
+        except NameError:
+            # unicode not available, fall back to duck-typing heuristic
+            pass
+
+        # Duck-typing heuristic for Unicode-like objects
         if hasattr(obj, 'encode') and hasattr(obj, 'replace') and not hasattr(obj, 'decode'):
-            # Unicode object, encode to ASCII with replacement
+            # Unicode-like object, encode to ASCII with replacement
             return obj.encode('ascii', 'replace')
         elif hasattr(obj, 'decode'):
             # 8-bit str that might need decoding first
@@ -47,11 +57,16 @@ def _encodeFallback(obj):
         return "[Name conversion failed]"
 
 
-def sanitizeFilename(filename):
-    """Remove or replace characters that are invalid in filenames on common OS."""
-    # Windows reserved names
+def _isReservedName(filename):
+    """Check if filename is a Windows reserved name."""
     reserved_names = ['CON', 'PRN', 'AUX', 'NUL'] + ['COM%d' % i for i in range(1, 10)] + ['LPT%d' % i for i in
                                                                                            range(1, 10)]
+    name_upper = filename.upper()
+    return name_upper in reserved_names or name_upper.split('.')[0] in reserved_names
+
+
+def sanitizeFilename(filename):
+    """Remove or replace characters that are invalid in filenames on common OS."""
 
     # Replace invalid characters
     invalid_chars = '<>:"/\\|?*'
@@ -62,14 +77,13 @@ def sanitizeFilename(filename):
     filename = ''.join(char if ord(char) >= 32 and ord(char) != 127 else '_' for char in filename)
 
     # Handle multiple leading dots (normalize to single safe prefix)
-    while filename.startswith('.'):
-        filename = filename[1:]
-    if filename != filename.lstrip('.'):
-        filename = '_' + filename.lstrip('.')
+    had_leading_dots = filename.startswith('.')
+    filename = filename.lstrip('.')
+    if had_leading_dots:
+        filename = '_' + filename
 
     # Handle Windows reserved names
-    name_upper = filename.upper()
-    if name_upper in reserved_names or name_upper.split('.')[0] in reserved_names:
+    if _isReservedName(filename):
         filename = '_' + filename
 
     # Remove trailing dots and spaces (Windows issue)
@@ -84,8 +98,7 @@ def sanitizeFilename(filename):
         filename = name[:200 - len(ext)] + ext
 
         # Re-check reserved names after truncation
-        name_upper = filename.upper()
-        if name_upper in reserved_names or name_upper.split('.')[0] in reserved_names:
+        if _isReservedName(filename):
             filename = '_' + filename
 
     # Ensure we have at least one character
@@ -280,11 +293,15 @@ def writeLog():
                         except AttributeError:
                             unitai_label = "UnitAI_%d" % iUnitAIType
                         except Exception:
-                            # Continue with other UnitAI types on unexpected errors
-                            continue
-                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitai_label,
-                                                                                 pPlayer.AI_totalUnitAIs(
-                                                                                     UnitAITypes(iUnitAIType))))
+                            # Don't skip logging entirely; use placeholder with error indication
+                            unitai_label = "UnitAI_%d_ERROR" % iUnitAIType
+
+                        try:
+                            count = pPlayer.AI_totalUnitAIs(UnitAITypes(iUnitAIType))
+                        except Exception:
+                            count = -1  # Error indicator in count
+
+                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitai_label, count))
 
                     pFile.write("\n\nCity Religions:\n-----------\n")
 
