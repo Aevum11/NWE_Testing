@@ -36,9 +36,17 @@ try:
 except ImportError:
     # Fallback for environments without threading support
     class DummyLock:
-        def __enter__(self): pass
+        def __enter__(self):
+            return self
 
-        def __exit__(self, *args): pass
+        def __exit__(self, *args):
+            pass
+
+        def acquire(self):
+            pass
+
+        def release(self):
+            pass
 
 
     _id_lock = DummyLock()
