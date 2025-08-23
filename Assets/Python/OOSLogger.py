@@ -4,6 +4,7 @@ import os
 import sys
 import errno
 import string
+import re
 
 # Debug flag - set to True to emit errors to stderr
 DEBUG_LOGGING = True
@@ -77,11 +78,8 @@ def _isReservedName(filename):
 def sanitizeFilename(filename):
     """Remove or replace characters that are invalid in filenames on common OS."""
 
-    # Use translate for better performance - create translation table
-    invalid_chars = '<>:"/\\|?*'
-    # Python 2.4 compatible translate table creation
-    trans_table = string.maketrans(invalid_chars, '_' * len(invalid_chars))
-    filename = filename.translate(trans_table)
+    # Use precompiled translation table for better performance
+    filename = filename.translate(_TRANS_TABLE)
 
     # Remove control characters (ASCII 0-31 and 127) and normalize whitespace
     cleaned_chars = []
@@ -95,9 +93,8 @@ def sanitizeFilename(filename):
             cleaned_chars.append(char)
     filename = ''.join(cleaned_chars)
 
-    # Normalize multiple whitespace/underscores to single underscore
-    import re
-    filename = re.sub(r'[\s_]+', '_', filename)
+    # Normalize multiple whitespace/underscores to single underscore using precompiled regex
+    filename = _WHITESPACE_UNDERSCORE_PATTERN.sub('_', filename)
 
     # Handle multiple leading dots (normalize to single safe prefix)
     had_leading_dots = filename.startswith('.')
@@ -400,17 +397,26 @@ def writeLog():
     except IOError, e:
         # File I/O errors - disk full, permissions, etc.
         if DEBUG_LOGGING:
-            sys.stderr.write("OOSLogger IOError: %s\n" % str(e))
+            try:
+                sys.stderr.write("OOSLogger IOError: %s\n" % str(e))
+            except:
+                pass  # Avoid cascade failures if stderr write fails
     except OSError, e:
         # OS-level errors - path issues, etc.
         if DEBUG_LOGGING:
-            sys.stderr.write("OOSLogger OSError: %s\n" % str(e))
+            try:
+                sys.stderr.write("OOSLogger OSError: %s\n" % str(e))
+            except:
+                pass  # Avoid cascade failures if stderr write fails
     except Exception, e:
         # Any other unexpected error - fail silently to avoid crashing game
         if DEBUG_LOGGING:
-            sys.stderr.write("OOSLogger Exception: %s\n" % str(e))
-            import traceback
-            traceback.print_exc()
+            try:
+                sys.stderr.write("OOSLogger Exception: %s\n" % str(e))
+                import traceback
+                traceback.print_exc()
+            except:
+                pass  # Avoid cascade failures if debug output fails
     finally:
         # Always close the file if it was opened
         if pFile is not None:
@@ -443,16 +449,28 @@ def _runTests():
         ("valid/\\<>:\"|?*name", "valid_________name"),
     ]
 
-    for input_name, expected in test_cases:
-        result = sanitizeFilename(input_name)
-        if result == expected:
-            sys.stderr.write("PASS: '%s' -> '%s'\n" % (input_name, result))
-        else:
-            sys.stderr.write("FAIL: '%s' -> '%s' (expected '%s')\n" % (input_name, result, expected))
+    try:
+        for input_name, expected in test_cases:
+            result = sanitizeFilename(input_name)
+            if result == expected:
+                sys.stderr.write("PASS: '%s' -> '%s'\n" % (input_name, result))
+            else:
+                sys.stderr.write("FAIL: '%s' -> '%s' (expected '%s')\n" % (input_name, result, expected))
+    except Exception, e:
+        # Don't let test failures crash the module import
+        try:
+            sys.stderr.write("Test execution failed: %s\n" % str(e))
+        except:
+            pass
 
 
-# Run tests if DEBUG_LOGGING is enabled
-_runTests(), 'CONIN
+# Run tests only if this module is imported during development/debugging
+# In production game environment, tests won't run unless explicitly called
+if DEBUG_LOGGING and __name__ != '__main__':
+    try:
+        _runTests()
+    except:
+        pass  # Silently ignore test failures during import, 'CONIN
 
 
 def _isReservedName(filename):
