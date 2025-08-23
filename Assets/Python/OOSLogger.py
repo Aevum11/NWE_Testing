@@ -5,6 +5,7 @@ import os
 
 def safeConvertToStr(obj):
     """Safely convert any object to string, handling potential encoding issues."""
+    result = None
     try:
         import TextUtil
         result = TextUtil.convertToStr(obj)
@@ -14,34 +15,57 @@ def safeConvertToStr(obj):
         return result
     except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
         # If TextUtil fails with unicode issues, try fallbacks on the result
-        try:
-            if hasattr(result, 'encode'):
-                # It's likely a unicode object, encode to ASCII with replacement
-                return result.encode('ascii', 'replace')
-            else:
-                # Not a unicode object, try direct conversion
-                return str(result)
-        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError, AttributeError):
-            return "[Name conversion failed]"
+        if result is not None:
+            return _encodeFallback(result)
+        else:
+            return _encodeFallback(obj)
     except (ImportError, AttributeError):
         # TextUtil module missing or doesn't have convertToStr method
-        try:
-            return str(obj)
-        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
-            return "[Name conversion failed]"
+        return _encodeFallback(obj)
     except Exception:
         # Any other error from TextUtil
-        try:
+        return _encodeFallback(obj)
+
+
+def _encodeFallback(obj):
+    """Fallback encoding logic for string conversion."""
+    try:
+        if hasattr(obj, 'encode'):
+            # It's likely a unicode object, encode to ASCII with replacement
+            return obj.encode('ascii', 'replace')
+        else:
+            # Not a unicode object, try direct conversion
             return str(obj)
-        except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError):
-            return "[Name conversion failed]"
+    except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError, AttributeError):
+        return "[Name conversion failed]"
 
 
 def sanitizeFilename(filename):
     """Remove or replace characters that are invalid in filenames on common OS."""
+    # Windows reserved names
+    reserved_names = ['CON', 'PRN', 'AUX', 'NUL'] + ['COM%d' % i for i in range(1, 10)] + ['LPT%d' % i for i in
+                                                                                           range(1, 10)]
+
+    # Replace invalid characters
     invalid_chars = '<>:"/\\|?*'
     for char in invalid_chars:
         filename = filename.replace(char, '_')
+
+    # Remove control characters (ASCII 0-31 and 127)
+    filename = ''.join(char if ord(char) >= 32 and ord(char) != 127 else '_' for char in filename)
+
+    # Handle Windows reserved names
+    name_upper = filename.upper()
+    if name_upper in reserved_names or name_upper.split('.')[0] in reserved_names:
+        filename = '_' + filename
+
+    # Remove trailing dots and spaces (Windows issue)
+    filename = filename.rstrip('. ')
+
+    # Ensure we have at least one character
+    if not filename:
+        filename = 'Player'
+
     return filename
 
 
@@ -100,7 +124,7 @@ def writeLog():
                 if pPlayer.isEverAlive():
 
                     pFile.write(2 * SEP + "%s player %d: %s\n" % (['NPC', 'Human'][pPlayer.isHuman()], iPlayer,
-                                                                         safeConvertToStr(pPlayer.getName())))
+                                                                  safeConvertToStr(pPlayer.getName())))
                     pFile.write(
                         "  Civilization: %s\n" % safeConvertToStr(pPlayer.getCivilizationDescriptionKey()))
                     pFile.write("  Alive: %s\n" % pPlayer.isAlive())
@@ -117,7 +141,8 @@ def writeLog():
                     pFile.write("Player %d Num Units: %d\n" % (iPlayer, pPlayer.getNumUnits()))
                     pFile.write(
                         "Player %d Num Selection Groups: %d\n" % (iPlayer, pPlayer.getNumSelectionGroups()))
-                    pFile.write("Player %d Difficulty: %s\n" % (iPlayer, safeConvertToStr(GC.getHandicapInfo(pPlayer.getHandicapType()).getDescription())))
+                    pFile.write("Player %d Difficulty: %s\n" % (iPlayer, safeConvertToStr(
+                        GC.getHandicapInfo(pPlayer.getHandicapType()).getDescription())))
                     pFile.write("Player %d State Religion: %s\n" % (iPlayer, safeConvertToStr(
                         pPlayer.getStateReligionKey())))
                     pFile.write("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
@@ -164,7 +189,7 @@ def writeLog():
                             pFile.write("Buildings: %d\n" % iCount)
                             pFile.write("Improved Plots: %d\n" % (pCity.countNumImprovedPlots()))
                             pFile.write("Tiles Worked: %d, Specialists: %d\n" % (pCity.getWorkingPopulation(),
-                                                                                        pCity.getSpecialistPopulation()))
+                                                                                 pCity.getSpecialistPopulation()))
                             pFile.write("Great People: %d\n" % pCity.getNumGreatPeople())
                             pFile.write(
                                 "Good Health: %d, Bad Health: %d\n" % (pCity.goodHealth(), pCity.badHealth(False)))
@@ -180,8 +205,8 @@ def writeLog():
                     for iBonus in xrange(GC.getNumBonusInfos()):
                         szTemp = safeConvertToStr(GC.getBonusInfo(iBonus).getDescription())
                         pFile.write("Player %d, %s, Number Available: %d\n" % (iPlayer, szTemp,
-                                                                                      pPlayer.getNumAvailableBonuses(
-                                                                                          iBonus)))
+                                                                               pPlayer.getNumAvailableBonuses(
+                                                                                   iBonus)))
                         pFile.write(
                             "Player %d, %s, Import: %d\n" % (iPlayer, szTemp, pPlayer.getBonusImport(iBonus)))
                         pFile.write(
@@ -198,27 +223,36 @@ def writeLog():
 
                     for iBuilding in xrange(GC.getNumBuildingInfos()):
                         pFile.write("Player %d, %s, Building class count plus making: %d\n" % (iPlayer,
-                                                                                                      safeConvertToStr(
-                                                                                                          GC.getBuildingInfo(
-                                                                                                              iBuilding).getDescription()),
-                                                                                                      pPlayer.getBuildingCountPlusMaking(
-                                                                                                          iBuilding)))
+                                                                                               safeConvertToStr(
+                                                                                                   GC.getBuildingInfo(
+                                                                                                       iBuilding).getDescription()),
+                                                                                               pPlayer.getBuildingCountPlusMaking(
+                                                                                                   iBuilding)))
 
                     pFile.write("\n\nUnit Class Info:\n--------------------\n")
 
                     for iUnit in xrange(GC.getNumUnitInfos()):
                         pFile.write("Player %d, %s, Unit class count plus training: %d\n" % (iPlayer,
-                                                                                                    safeConvertToStr(
-                                                                                                        GC.getUnitInfo(
-                                                                                                            iUnit).getDescription()),
-                                                                                                    pPlayer.getUnitCountPlusMaking(
-                                                                                                        iUnit)))
+                                                                                             safeConvertToStr(
+                                                                                                 GC.getUnitInfo(
+                                                                                                     iUnit).getDescription()),
+                                                                                             pPlayer.getUnitCountPlusMaking(
+                                                                                                 iUnit)))
 
                     pFile.write("\n\nUnitAI Types Info:\n------------------\n")
 
                     for iUnitAIType in xrange(int(UnitAITypes.NUM_UNITAI_TYPES)):
-                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, safeConvertToStr(GC.getUnitAIInfo(
-                            iUnitAIType).getType()), pPlayer.AI_totalUnitAIs(UnitAITypes(iUnitAIType))))
+                        try:
+                            unitai_info = GC.getUnitAIInfo(iUnitAIType)
+                            if hasattr(unitai_info, 'getDescription'):
+                                unitai_label = safeConvertToStr(unitai_info.getDescription())
+                            else:
+                                unitai_label = safeConvertToStr(unitai_info.getType())
+                        except:
+                            unitai_label = "UnitAI_%d" % iUnitAIType
+                        pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitai_label,
+                                                                                 pPlayer.AI_totalUnitAIs(
+                                                                                     UnitAITypes(iUnitAIType))))
 
                     pFile.write("\n\nCity Religions:\n-----------\n")
 
@@ -255,8 +289,8 @@ def writeLog():
                     if pPlayer.getNumUnits():
                         for pUnit in pPlayer.units():
                             pFile.write("Player %d, Unit ID: %d, %s\n" % (iPlayer, pUnit.getID(),
-                                                                                 safeConvertToStr(
-                                                                                     pUnit.getName())))
+                                                                          safeConvertToStr(
+                                                                              pUnit.getName())))
                             pFile.write(
                                 "X: %d, Y: %d\nDamage: %d\n" % (pUnit.getX(), pUnit.getY(), pUnit.getDamage()))
                             pFile.write(
@@ -278,7 +312,7 @@ def writeLog():
                                     pFile.write(
                                         "\t" + safeConvertToStr(GC.getUnitCombatInfo(j).getDescription()) + "\n")
                     else:
-                        pFile.write("No Units")
+                        pFile.write("No Units\n")
                     # Space at end of player's info
                     pFile.write("\n\n")
 
