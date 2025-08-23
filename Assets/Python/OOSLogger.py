@@ -2,6 +2,7 @@
 from CvPythonExtensions import CyGlobalContext, YieldTypes, CommerceTypes, UnitAITypes
 import os
 import sys
+import errno
 
 
 def safeConvertToStr(obj):
@@ -57,13 +58,18 @@ def _encodeFallback(obj):
         return "[Name conversion failed]"
 
 
+# Precomputed set of Windows reserved names for better performance
+_RESERVED_NAMES = set(['CON', 'PRN', 'AUX', 'NUL', 'CLOCK$'] +
+                     ['COM%d' % i for i in range(1, 10)] +
+                     ['LPT%d' % i for i in range(1, 10)])
+
+
 def _isReservedName(filename):
     """Check if filename is a Windows reserved name."""
-    reserved_names = ['CON', 'PRN', 'AUX', 'NUL', 'CLOCK$'] + ['COM%d' % i for i in range(1, 10)] + ['LPT%d' % i for i
-                                                                                                     in range(1, 10)]
     # Normalize by trimming trailing dots/spaces before comparison
     normalized = filename.rstrip('. ').upper()
-    return normalized in reserved_names or normalized.split('.')[0] in reserved_names
+    base = normalized.split('.', 1)[0]  # Only split on first dot for efficiency
+    return normalized in _RESERVED_NAMES or base in _RESERVED_NAMES
 
 
 def sanitizeFilename(filename):
@@ -83,16 +89,14 @@ def sanitizeFilename(filename):
     if had_leading_dots:
         filename = '_' + filename
 
-    # Handle Windows reserved names - check once and reuse normalized value
+    # Handle Windows reserved names
     if _isReservedName(filename):
         filename = '_' + filename
 
     # Remove trailing dots and spaces (Windows issue)
     filename = filename.rstrip('. ')
 
-    # Re-check reserved names after trimming trailing dots/spaces
-    if _isReservedName(filename):
-        filename = '_' + filename
+    # No need to recheck reserved names - _isReservedName already normalizes
 
     # Clamp length to Windows-safe limit (255 chars, leave some buffer)
     if len(filename) > 200:
@@ -121,14 +125,13 @@ def writeLog():
     iActivePlayer = GAME.getActivePlayer()
     playerName = safeConvertToStr(GC.getPlayer(iActivePlayer).getName())
 
-    # Ensure logs directory exists - harden against race conditions
+    # Ensure logs directory exists - fully race-safe creation
     log_dir = os.path.join(SP.userDir, "Logs")
     try:
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+        os.makedirs(log_dir)
     except OSError, e:
-        # Handle race condition where directory is created between exists check and makedirs
-        if e.errno == 17:  # EEXIST - directory already exists
+        # Handle race condition where directory is created between calls or already exists
+        if e.errno == errno.EEXIST:
             pass
         else:
             # If we can't create the directory for other reasons, try writing to user directory directly
