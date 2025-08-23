@@ -30,7 +30,8 @@ def safeConvertToStr(obj):
 def _encodeFallback(obj):
     """Fallback encoding logic for string conversion."""
     try:
-        if isinstance(obj, unicode):
+        # Safe probe for Unicode type (works in Python 2.4 without importing unicode)
+        if hasattr(obj, 'encode') and hasattr(obj, 'replace') and not hasattr(obj, 'decode'):
             # Unicode object, encode to ASCII with replacement
             return obj.encode('ascii', 'replace')
         elif hasattr(obj, 'decode'):
@@ -60,9 +61,11 @@ def sanitizeFilename(filename):
     # Remove control characters (ASCII 0-31 and 127)
     filename = ''.join(char if ord(char) >= 32 and ord(char) != 127 else '_' for char in filename)
 
-    # Handle leading dots (hidden files on Unix, problematic on Windows)
-    if filename.startswith('.'):
-        filename = '_' + filename[1:]
+    # Handle multiple leading dots (normalize to single safe prefix)
+    while filename.startswith('.'):
+        filename = filename[1:]
+    if filename != filename.lstrip('.'):
+        filename = '_' + filename.lstrip('.')
 
     # Handle Windows reserved names
     name_upper = filename.upper()
@@ -75,7 +78,15 @@ def sanitizeFilename(filename):
     # Clamp length to Windows-safe limit (255 chars, leave some buffer)
     if len(filename) > 200:
         name, ext = os.path.splitext(filename)
+        # Guard against very long extensions
+        if len(ext) > 10:
+            ext = ext[:10]
         filename = name[:200 - len(ext)] + ext
+
+        # Re-check reserved names after truncation
+        name_upper = filename.upper()
+        if name_upper in reserved_names or name_upper.split('.')[0] in reserved_names:
+            filename = '_' + filename
 
     # Ensure we have at least one character
     if not filename:
@@ -268,6 +279,9 @@ def writeLog():
                                 unitai_label = safeConvertToStr(unitai_info.getType())
                         except AttributeError:
                             unitai_label = "UnitAI_%d" % iUnitAIType
+                        except Exception:
+                            # Continue with other UnitAI types on unexpected errors
+                            continue
                         pFile.write("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitai_label,
                                                                                  pPlayer.AI_totalUnitAIs(
                                                                                      UnitAITypes(iUnitAIType))))
