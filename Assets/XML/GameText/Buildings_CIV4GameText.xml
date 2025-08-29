@@ -157,7 +157,7 @@
 		<Polish>Zasieki</Polish>
 		<Russian>Çàâàë</Russian>
 	</TEXT>
-		<TEXT>
+	<TEXT>
 		<Tag>TXT_KEY_BUILDING_CAVE_SHELTER</Tag>
 		<English>Cave shelter</English>
 		<French>Abri de grotte</French>
@@ -174,7 +174,7 @@
 		<Italian>[NEWLINE][NEWLINE]Un'[COLOR_GREEN]abbattuta[COLOR_REVERT] è un [COLOR_HIGHLIGHT_TEXT]tipo di fortificazione[COLOR_REVERT], ottenuta intrecciando i rami degli alberi che vengono abbattuti in fila, con le chiome rivolte verso il nemico. [NEWLINE][NEWLINE]Gli alberi sono solitamente incastrati o legati tra loro con dei fili, per aumentarne la resistenza; spesso, le [COLOR_GREEN]abbattute[COLOR_REVERT] vengono usate assieme a barriere di filo spinato e altri ostacoli.</Italian>
 		<Polish>Zasieki, zasiek, zasiecz - pod tak&#185; nazw&#185; znane by&#179;y w wojskowo&#156;ci staropolskiej zapory z pni drzew w miejscach, kt&#243;rych nie da&#179;o si&#234; ufortyfikowa&#230; wa&#179;ami ziemnymi. Robiono zasieki, czyli &#156;cinano wiele drzew, kt&#243;re wraz z konarami i ga&#179;&#234;ziami tworzy&#179;y zapor&#234; niedost&#234;pn&#185; dla konnicy. Zasieki stosowane by&#179;y ju&#191; w &#156;redniowieczu (zob. Przesieka &#140;l&#185;ska) i to zar&#243;wno do zwalniania tabor&#243;w nieprzyjaciela, jak i do blokowania ucieczki si&#179; wroga w okr&#185;&#191;eniu. Ostatni raz tego typu zasieki stosowali Kurpie w czasie potopu szwedzkiego.</Polish>
 	</TEXT>
-		<TEXT>
+	<TEXT>
 		<Tag>TXT_KEY_BUILDING_CAVE_SHELTER_PEDIA</Tag>
 		<English>Cave shelters have historically served as protective refuges from harsh weather, predators, and conflicts. They provided secure living spaces, storage, and places for communal gatherings, playing a crucial role in early human survival and societal development.</English>
 		<French>Les abris dans les grottes ont historiquement servi de refuges protecteurs contre les intempéries, les prédateurs et les conflits. Ils offraient des espaces de vie sécurisés, des lieux de stockage et des endroits pour les rassemblements communautaires, jouant un rôle crucial dans la survie des premiers humains et le développement des sociétés.</French>
@@ -8845,7 +8845,7 @@
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Insekten:(Ressource) Insekten:(Ressource) Insekten:(Ressource) Insekten</Text>
+			<Text>(Ressource) Insekten:(Ressource) Insekten:(Ressource) Insekten:(Ressource) Insekten</Text>
 			<Gender>Neuter</Gender>
 			<Plural>1</Plural>
 		</German>
@@ -10165,7 +10165,7 @@
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Kadaver:(Ressource) Kadaver:(Ressource) Kadavern:(Ressource) Kadaver</Text>
+			<Text>(Ressource) Kadaver:(Ressource) Kadaver:(Ressource) Kadavern:(Ressource) Kadaver</Text>
 			<Gender>Male</Gender>
 			<Plural>1</Plural>
 		</German>
@@ -20393,7 +20393,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	</TEXT>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_DUTCH_DIKE_PEDIA</Tag>
-		<English>The earliest indications of dike building date from the late Iron Age. During excavations of terps in the Frisian villages of Peins and Dongjum, among others, dike bodies were found - small dikes predating the building of the terp. These little dikes, no more than 70 cm high, were composed of neatly-stacked peat sods against a core of loose bulk material. Later on the structure was reinforced by adding an outer wall with a gentler gradient. The evolvement of dikes of carefully stacked clay to pile dikes into high-tech sensor dikes did not happen overnight. Already in Roman times, small dikes and dams were created. 		[PARAGRAPH:1]A look into the long Dutch tradition of dike building gives us insight on a deeply rooted culture of trial and error in a country where the sea level rises and the ground level is dropping. History shows that either a big flood or a tiny worm, but also national welfare can lead to big consequences and shifts in the flood protection system. Key moments in the ever evolving dike network are described over different dike periods.</English>
+		<English>The earliest indications of dike building date from the late Iron Age. During excavations of terps in the Frisian villages of Peins and Dongjum, among others, dike bodies were found - small dikes predating the building of the terp. These little dikes, no more than 70 cm high, were composed of neatly-stacked peat sods against a core of loose bulk material. Later on the structure was reinforced by adding an outer wall with a gentler gradient. The evolvement of dikes of carefully stacked clay to pile dikes into high-tech sensor dikes did not happen overnight. Already in Roman times, small dikes and dams were created. [PARAGRAPH:1]A look into the long Dutch tradition of dike building gives us insight on a deeply rooted culture of trial and error in a country where the sea level rises and the ground level is dropping. History shows that either a big flood or a tiny worm, but also national welfare can lead to big consequences and shifts in the flood protection system. Key moments in the ever evolving dike network are described over different dike periods.</English>
 		<French>Les premières indications de construction de digues datent de la fin de l'âge du fer. Lors de fouilles de terpes dans les villages frisons de Peins et Dongjum, entre autres, des corps de digues ont été trouvés - de petites digues antérieures à la construction de la terpe. Ces petites digues, ne dépassant pas 70 cm de haut, étaient composées de mottes de tourbe soigneusement empilées contre un noyau de matériau en vrac. Plus tard, la structure a été renforcée en ajoutant un mur extérieur avec une pente plus douce. L'évolution des digues d'argile soigneusement empilées vers des digues à capteurs de haute technologie ne s'est pas faite du jour au lendemain. Déjà à l'époque romaine, de petites digues et barrages étaient créés. [PARAGRAPH:1]Un regard sur la longue tradition néerlandaise de construction de digues nous donne un aperçu d'une culture profondément enracinée d'essais et d'erreurs dans un pays où le niveau de la mer monte et le niveau du sol baisse. L'histoire montre qu'une grande inondation ou un petit ver, mais aussi le bien-être national peuvent entraîner de grandes conséquences et des changements dans le système de protection contre les inondations. Les moments clés de l'évolution constante du réseau de digues sont décrits sur différentes périodes de digues.</French>
 		<Russian>Самые ранние признаки строительства дамбы датируются поздним железным веком. Во время раскопок терпов в фризских деревнях Пейнс и Донгжум, среди прочего, были обнаружены дамбы - небольшие дамбы, предшествовавшие строительству терпа. Эти маленькие дайки, высотой не более 70 см, состояли из аккуратно сложенных торфяных дернов с ядром из сыпучего материала. Позже конструкция была усилена путем добавления наружной стены с более мягким градиентом. Эволюция дамб из аккуратно сложенных глин в кучу в высокотехнологичные сенсорные пики не произошла за одну ночь. Уже во времена Римской империи были созданы небольшие дамбы и плотины.[PARAGRAPH:1]Изучение давней голландской традиции строительства дамбы дает нам представление о глубоко укоренившейся культуре проб и ошибок в стране, где уровень моря поднимается и земля уровень падает. История показывает, что большое наводнение или крошечный червь, а также национальное благосостояние могут привести к большим последствиям и изменениям в системе защиты от наводнений. Ключевые моменты в постоянно развивающейся сети плотин описываются в разные периоды.</Russian>
 	</TEXT>
@@ -20915,7 +20915,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Eier:(Ressource) Eier:(Ressource) Eiern:(Ressource) Eier</Text>
+			<Text>(Ressource) Eier:(Ressource) Eier:(Ressource) Eiern:(Ressource) Eier</Text>
 			<Gender>Neuter</Gender>
 			<Plural>1</Plural>
 		</German>
@@ -24560,7 +24560,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Feuerstein:(Ressource) Feuersteins:(Ressource) Feuerstein:(Ressource) Feuerstein</Text>
+			<Text>(Ressource) Feuerstein:(Ressource) Feuersteins:(Ressource) Feuerstein:(Ressource) Feuerstein</Text>
 			<Gender>Male</Gender>
 			<Plural>0</Plural>
 		</German>
@@ -28461,7 +28461,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Gras:(Ressource) Grases:(Ressource) Gras:(Ressource) Gras</Text>
+			<Text>(Ressource) Gras:(Ressource) Grases:(Ressource) Gras:(Ressource) Gras</Text>
 			<Gender>Neuter</Gender>
 			<Plural>0</Plural>
 		</German>
@@ -28472,7 +28472,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 		<English>Grauman's Chinese Theatre</English>
 		<French>Le Théâtre Chinois de Grauman</French>
 		<German>
-		    <Text>TCL Chinese Theatre:TCL Chinese Theatres:TCL Chinese Theatre:TCL Chinese Theatre</Text>
+			<Text>TCL Chinese Theatre:TCL Chinese Theatres:TCL Chinese Theatre:TCL Chinese Theatre</Text>
 			<Gender>Neuter</Gender>
 			<Plural>0</Plural>
 		</German>
@@ -28640,7 +28640,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 		<English>Great Bath of Mohenjo-daro</English>
 		<French>Le Grand Bain de Mohenjo-daro</French>
 		<German>
-		    <Text>Großes Bad von Mohenjo-Daro:Großen Bades von Mohenjo-Daro:Großen Bad von Mohenjo-Daro:Große Bad von Mohenjo-Daro</Text>
+			<Text>Großes Bad von Mohenjo-Daro:Großen Bades von Mohenjo-Daro:Großen Bad von Mohenjo-Daro:Große Bad von Mohenjo-Daro</Text>
 			<Gender>Neuter</Gender>
 			<Plural>0</Plural>
 		</German>
@@ -53008,7 +53008,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	</TEXT>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_ELECTRONIC_WASTE_RECYCLING_DEPOT_PEDIA</Tag>
-		<English>The direct disposal of electrical equipment, such as old computers and mobile phones-is banned in many areas due to the toxic contents of certain components. The recycling process works by mechanically separating the metals, plastics, and circuit boards contained in the appliance. When this is done on a large scale at an electronic waste recycling plant, component recovery can be achieved in a cost-effective manner. Iron and steel are the world's most recycled materials, and among the easiest materials to reprocess, as they can be separated magnetically from the waste stream. Recycling is via a steelworks: scrap is either remelted in an electric arc furnace (90-100% scrap), or used as part of the charge in a Basic Oxygen Furnace (around 25% scrap). Any grade of steel can be recycled to top quality new metal, with no 'downgrading' from prime to lower quality materials as steel is recycled repeatedly. 42% of crude steel produced is recycled material. Aluminium is one of the most efficient and widely-recycled materials. Aluminium is shredded and ground into small pieces or crushed into bales. These pieces or bales are melted in an aluminium smelter to produce molten aluminium. By this stage the recycled aluminium is indistinguishable from virgin aluminium and further processing is identical for both. This process does not produce any change in the metal, so aluminium can be recycled indefinitely. 	Glass bottles and jars are gathered by a curbside collection truck and bottle banks, where the glass may be sorted into color categories. The collected glass cullet is taken to a glass recycling plant where it is monitored for purity and contaminants are removed. The cullet is crushed and added to a raw material mix in a melting furnace. It is then mechanically blown or molded into new jars or bottles. Glass cullet is also used in the construction industry for aggregate and glassphalt. Glassphalt is a road-laying material which comprises around 30% recycled glass. Glass can be recycled indefinitely as its structure does not deteriorate when reprocessed. 		</English>
+		<English>The direct disposal of electrical equipment, such as old computers and mobile phones-is banned in many areas due to the toxic contents of certain components. The recycling process works by mechanically separating the metals, plastics, and circuit boards contained in the appliance. When this is done on a large scale at an electronic waste recycling plant, component recovery can be achieved in a cost-effective manner. Iron and steel are the world's most recycled materials, and among the easiest materials to reprocess, as they can be separated magnetically from the waste stream. Recycling is via a steelworks: scrap is either remelted in an electric arc furnace (90-100% scrap), or used as part of the charge in a Basic Oxygen Furnace (around 25% scrap). Any grade of steel can be recycled to top quality new metal, with no 'downgrading' from prime to lower quality materials as steel is recycled repeatedly. 42% of crude steel produced is recycled material. Aluminium is one of the most efficient and widely-recycled materials. Aluminium is shredded and ground into small pieces or crushed into bales. These pieces or bales are melted in an aluminium smelter to produce molten aluminium. By this stage the recycled aluminium is indistinguishable from virgin aluminium and further processing is identical for both. This process does not produce any change in the metal, so aluminium can be recycled indefinitely. Glass bottles and jars are gathered by a curbside collection truck and bottle banks, where the glass may be sorted into color categories. The collected glass cullet is taken to a glass recycling plant where it is monitored for purity and contaminants are removed. The cullet is crushed and added to a raw material mix in a melting furnace. It is then mechanically blown or molded into new jars or bottles. Glass cullet is also used in the construction industry for aggregate and glassphalt. Glassphalt is a road-laying material which comprises around 30% recycled glass. Glass can be recycled indefinitely as its structure does not deteriorate when reprocessed. </English>
 		<French>L'élimination directe d'équipements électriques, comme les vieux ordinateurs et téléphones mobiles, est interdite dans de nombreuses régions en raison du contenu toxique de certains composants. Le processus de recyclage fonctionne en séparant mécaniquement les métaux, plastiques et circuits imprimés contenus dans l'appareil. Lorsque cela est fait à grande échelle dans une usine de recyclage de déchets électroniques, la récupération des composants peut être réalisée de manière rentable. Le fer et l'acier sont les matériaux les plus recyclés au monde, et parmi les plus faciles à retraiter, car ils peuvent être séparés magnétiquement du flux de déchets. Le recyclage se fait via une aciérie : la ferraille est soit refondue dans un four à arc électrique (90-100% de ferraille), soit utilisée comme partie de la charge dans un four à oxygène basique (environ 25% de ferraille). N'importe quelle qualité d'acier peut être recyclée en métal neuf de haute qualité, sans 'déclassement' du premier choix vers des matériaux de qualité inférieure, car l'acier est recyclé à plusieurs reprises. 42% de l'acier brut produit est du matériau recyclé. L'aluminium est l'un des matériaux les plus efficaces et les plus largement recyclés. L'aluminium est déchiqueté et broyé en petits morceaux ou écrasé en balles. Ces morceaux ou balles sont fondus dans une fonderie d'aluminium pour produire de l'aluminium en fusion. À ce stade, l'aluminium recyclé est indiscernable de l'aluminium vierge et le traitement ultérieur est identique pour les deux. Ce processus ne produit aucun changement dans le métal, donc l'aluminium peut être recyclé indéfiniment. Les bouteilles et bocaux en verre sont collectés par un camion de collecte en bordure de trottoir et des conteneurs à bouteilles, où le verre peut être trié par catégories de couleurs. Le calcin de verre collecté est transporté dans une usine de recyclage de verre où sa pureté est contrôlée et les contaminants sont éliminés. Le calcin est broyé et ajouté à un mélange de matières premières dans un four de fusion. Il est ensuite mécaniquement soufflé ou moulé en nouveaux bocaux ou bouteilles. Le calcin de verre est également utilisé dans l'industrie de la construction pour les agrégats et le glassphalt. Le glassphalt est un matériau de revêtement routier qui comprend environ 30% de verre recyclé. Le verre peut être recyclé indéfiniment car sa structure ne se détériore pas lors du retraitement.</French>
 	</TEXT>
 	<TEXT>
@@ -53797,7 +53797,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 		<French>Un port fluvial est un petit port pour la livraison et la collecte de marchandises, généralement pour une ville enclavée.</French>
 		<Polish>Port rzeczny - obszar na brzegu rzeki, kana&#179;u rzecznego lub jeziora (zar&#243;wno na l&#185;dzie, jak i na wodzie) wyposa&#191;ony w zesp&#243;&#179; urz&#185;dze&#241; umo&#191;liwiaj&#185;cych przybijanie jednostek p&#179;ywaj&#185;cych - barek i holownik&#243;w, wymian&#234; z l&#185;dem os&#243;b i towar&#243;w, a tak&#191;e wykonania typowych czynno&#156;ci zwi&#185;zanych z eksploatacj&#185; danej jednostki (uzupe&#179;nianie zapas&#243;w, usuni&#234;cie nieczysto&#156;ci itp.)</Polish>
 	</TEXT>
-		<TEXT>
+	<TEXT>
 		<Tag>TXT_KEY_BUILDING_WATER_TROUGH_PEDIA</Tag>
 		<English>In the prehistoric age, water troughs were vital for managing water resources. Carved from stone or wood, they provided a reliable source of water for daily needs. These simple structures reflect the ingenuity of early humans in ensuring access to essential resources.</English>
 		<French>À l'époque préhistorique, les abreuvoirs étaient essentiels pour gérer les ressources en eau. Taillés dans la pierre ou le bois, ils fournissaient une source fiable d'eau pour les besoins quotidiens. Ces structures simples reflètent l'ingéniosité des premiers humains pour assurer l'accès aux ressources essentielles.</French>
@@ -66264,7 +66264,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 		<German>
 			<Text>Versailles:Versailles:Versailles:Versailles</Text>
 			<Gender>neuter:neuter:neuter:neuter</Gender>
-			<Plural>0:0:0:0</Plural>  
+			<Plural>0:0:0:0</Plural>
 		</German>
 		<Italian>Reggia di Versailles</Italian>
 		<Spanish>
@@ -68046,7 +68046,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 			<Plural>0</Plural>
 		</French>
 		<German>
-		    <Text>(Ressource) Holz:(Ressource) Holzes:(Ressource) Holz:(Ressource) Holz</Text>
+			<Text>(Ressource) Holz:(Ressource) Holzes:(Ressource) Holz:(Ressource) Holz</Text>
 			<Gender>Neuter</Gender>
 			<Plural>0</Plural>
 		</German>
