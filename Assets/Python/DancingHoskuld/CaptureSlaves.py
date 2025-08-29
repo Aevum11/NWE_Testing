@@ -1,229 +1,297 @@
-## By StrategyOnly converted to BUG by Dancing Hoskuld
-## Completely rewritten when we went fom jus slaves to captives
-
-## Modified by Dancing Hoskuld
-##   Now Captives not Slaves
-##     Chance of capturing a Military Captive when you attach a unit depends n your and their civics (to be done)
-##     Capturing a military init now gives a Captive (Military)
-##     Raizing a city will give Captive (Civilians) instead
+## CaptureSlaves.py - Memory-optimized version for 32-bit Caveman2Cosmos
+## Optimization approach:
+## - Pre-cache all string lookups and global references at module initialization
+## - Use local variables to minimize repeated lookups
+## - Delete unused variables immediately to free memory
+## - Consolidate similar operations to reduce function calls
+## - Avoid creating intermediate variables when not needed
+## - Use direct method references to avoid repeated attribute lookups
 
 from CvPythonExtensions import *
 import BugUtil
 import CvUtil
 
-GC = CyGlobalContext()
-GAME = GC.getGame()
-TRNSLTR = CyTranslator()
+# Pre-cached global references (initialized once in init())
+_GC = None
+_GAME = None
+_TRNSLTR = None
+_CyInterface = None
+_ColorTypes = None
 
-giDomainLand = -1
+# Pre-cached domain and unit type constants
+_DOMAIN_LAND = -1
+
+# Pre-cached unit types (all initialized in init() to avoid repeated string lookups)
+_UNIT_CAPTIVE_NEANDERTHAL = -1
+_UNIT_CAPTIVE_MILITARY = -1
+_UNIT_CAPTIVE_CIVILIAN = -1
+_UNIT_FREED_SLAVE = -1
+_UNIT_CAPTIVE_IMMIGRANT = -1
+_UNIT_STORY_TELLER = -1
+_UNIT_EARLY_MERCHANT_C2C = -1
+_UNIT_HEALER = -1
+
+# Pre-cached specialist types
+_SPECIALIST_SETTLED_SLAVE = -1
+_SPECIALIST_SETTLED_SLAVE_FOOD = -1
+_SPECIALIST_SETTLED_SLAVE_PRODUCTION = -1
+_SPECIALIST_SETTLED_SLAVE_COMMERCE = -1
+_SPECIALIST_SETTLED_SLAVE_HEALTH = -1
+_SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT = -1
+_SPECIALIST_SETTLED_SLAVE_TUTOR = -1
+_SPECIALIST_SETTLED_SLAVE_MILITARY = -1
+
+# Pre-cached unitcombat type
+_UNITCOMBAT_SPECIES_NEANDERTHAL = -1
+
+# Pre-cached message strings (loaded once)
+_MSG_NEANDERTHAL_CAPTIVE = None
+_MSG_MILITARY_CAPTIVE = None
+_MSG_CIVILIAN_CAPTIVE = None
+_MSG_FREED_SLAVES_AS = None
+_MSG_FREED_SLAVES_AS_IMMIGRANTS = None
+
+# Pre-cached icon path to avoid repeated string creation
+_SERFDOM_ICON = 'Art/Interface/Buttons/Civics/Serfdom.dds'
+_COLOR_ID = 44
+
+# Pre-cached method references for frequently called functions
+_getPlayer = None
+_getSorenRandNum = None
+_sendMessage = None
+
 
 def init():
-	global giDomainLand
-	giDomainLand = GC.getInfoTypeForString('DOMAIN_LAND')
+    """Initialize all cached references and constants."""
+    global _GC, _GAME, _TRNSLTR, _CyInterface, _ColorTypes
+    global _DOMAIN_LAND
+    global _UNIT_CAPTIVE_NEANDERTHAL, _UNIT_CAPTIVE_MILITARY, _UNIT_CAPTIVE_CIVILIAN
+    global _UNIT_FREED_SLAVE, _UNIT_CAPTIVE_IMMIGRANT, _UNIT_STORY_TELLER
+    global _UNIT_EARLY_MERCHANT_C2C, _UNIT_HEALER
+    global _SPECIALIST_SETTLED_SLAVE, _SPECIALIST_SETTLED_SLAVE_FOOD
+    global _SPECIALIST_SETTLED_SLAVE_PRODUCTION, _SPECIALIST_SETTLED_SLAVE_COMMERCE
+    global _SPECIALIST_SETTLED_SLAVE_HEALTH, _SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT
+    global _SPECIALIST_SETTLED_SLAVE_TUTOR, _SPECIALIST_SETTLED_SLAVE_MILITARY
+    global _UNITCOMBAT_SPECIES_NEANDERTHAL
+    global _MSG_NEANDERTHAL_CAPTIVE, _MSG_MILITARY_CAPTIVE, _MSG_CIVILIAN_CAPTIVE
+    global _MSG_FREED_SLAVES_AS, _MSG_FREED_SLAVES_AS_IMMIGRANTS
+    global _getPlayer, _getSorenRandNum, _sendMessage
+
+    # Cache global objects once
+    _GC = CyGlobalContext()
+    _GAME = _GC.getGame()
+    _TRNSLTR = CyTranslator()
+    _CyInterface = CyInterface()
+    _ColorTypes = ColorTypes
+
+    # Cache method references to avoid repeated attribute lookups
+    _getPlayer = _GC.getPlayer
+    _getSorenRandNum = _GAME.getSorenRandNum
+    _sendMessage = CvUtil.sendMessage
+
+    # Cache all string lookups once at initialization
+    # This avoids repeated expensive string comparisons
+    getInfoType = _GC.getInfoTypeForString
+
+    # Domains
+    _DOMAIN_LAND = getInfoType('DOMAIN_LAND')
+
+    # Unit types - single lookup per type
+    _UNIT_CAPTIVE_NEANDERTHAL = getInfoType('UNIT_CAPTIVE_NEANDERTHAL')
+    _UNIT_CAPTIVE_MILITARY = getInfoType('UNIT_CAPTIVE_MILITARY')
+    _UNIT_CAPTIVE_CIVILIAN = getInfoType('UNIT_CAPTIVE_CIVILIAN')
+    _UNIT_FREED_SLAVE = getInfoType('UNIT_FREED_SLAVE')
+    _UNIT_CAPTIVE_IMMIGRANT = getInfoType('UNIT_CAPTIVE_IMMIGRANT')
+    _UNIT_STORY_TELLER = getInfoType('UNIT_STORY_TELLER')
+    _UNIT_EARLY_MERCHANT_C2C = getInfoType('UNIT_EARLY_MERCHANT_C2C')
+    _UNIT_HEALER = getInfoType('UNIT_HEALER')
+
+    # Specialist types
+    _SPECIALIST_SETTLED_SLAVE = getInfoType('SPECIALIST_SETTLED_SLAVE')
+    _SPECIALIST_SETTLED_SLAVE_FOOD = getInfoType('SPECIALIST_SETTLED_SLAVE_FOOD')
+    _SPECIALIST_SETTLED_SLAVE_PRODUCTION = getInfoType('SPECIALIST_SETTLED_SLAVE_PRODUCTION')
+    _SPECIALIST_SETTLED_SLAVE_COMMERCE = getInfoType('SPECIALIST_SETTLED_SLAVE_COMMERCE')
+    _SPECIALIST_SETTLED_SLAVE_HEALTH = getInfoType('SPECIALIST_SETTLED_SLAVE_HEALTH')
+    _SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT = getInfoType('SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT')
+    _SPECIALIST_SETTLED_SLAVE_TUTOR = getInfoType('SPECIALIST_SETTLED_SLAVE_TUTOR')
+    _SPECIALIST_SETTLED_SLAVE_MILITARY = getInfoType('SPECIALIST_SETTLED_SLAVE_MILITARY')
+
+    # Unit combat types
+    _UNITCOMBAT_SPECIES_NEANDERTHAL = getInfoType('UNITCOMBAT_SPECIES_NEANDERTHAL')
+
+    # Pre-cache translated messages
+    getText = _TRNSLTR.getText
+    _MSG_NEANDERTHAL_CAPTIVE = getText("TXT_KEY_MSG_NEANDERTHAL_CAPTIVE", ())
+    _MSG_MILITARY_CAPTIVE = getText("TXT_KEY_MSG_MILITARY_CAPTIVE", ())
+    _MSG_CIVILIAN_CAPTIVE = "TXT_KEY_MSG_CIVILIAN_CAPTIVE"  # Used with BugUtil.getText
+    _MSG_FREED_SLAVES_AS = "TXT_KEY_MSG_FREED_SLAVES_AS"
+    _MSG_FREED_SLAVES_AS_IMMIGRANTS = "TXT_KEY_MSG_FREED_SLAVES_AS_IMMIGRANTS"
+
+    # Clear the local reference to free memory
+    del getInfoType
+    del getText
+
 
 def onCombatResult(argsList):
-	CyUnitW, CyUnitL = argsList
+    """Handle combat results and potential captive capture."""
+    CyUnitW, CyUnitL = argsList
 
-	# Captives
-	# Check that the losing unit is not an animal and the unit does not have a capture type defined in the XML
-	if (CyUnitW.isMadeAttack() and not CyUnitL.isAnimal() and CyUnitL.getDomainType() == giDomainLand
-	and CyUnitW.getDomainType() == giDomainLand and CyUnitL.getCaptureUnitType() == -1
-	):
-		iCaptureProbability = CyUnitW.captureProbabilityTotal()
-		iCaptureResistance = CyUnitL.captureResistanceTotal()
-		iChance = iCaptureProbability - iCaptureResistance
-		BugUtil.info("CaptureSlaves: Chance to capture a captive is %d (%d - %d)", iChance, iCaptureProbability, iCaptureResistance)
+    # Early exit conditions combined in single check
+    if (not CyUnitW.isMadeAttack() or CyUnitL.isAnimal() or
+            CyUnitL.getDomainType() != _DOMAIN_LAND or
+            CyUnitW.getDomainType() != _DOMAIN_LAND or
+            CyUnitL.getCaptureUnitType() != -1):
+        return
 
-		if iChance > GAME.getSorenRandNum(100, "Slave"):  # 0-99
+    # Calculate capture chance
+    iChance = CyUnitW.captureProbabilityTotal() - CyUnitL.captureResistanceTotal()
 
-			if CyUnitL.isHasUnitCombat(GC.getInfoTypeForString('UNITCOMBAT_SPECIES_NEANDERTHAL')):
-				iUnit = GC.getInfoTypeForString('UNIT_CAPTIVE_NEANDERTHAL')
-				sMessage = TRNSLTR.getText("TXT_KEY_MSG_NEANDERTHAL_CAPTIVE",())
-			else:
-				iUnit = GC.getInfoTypeForString('UNIT_CAPTIVE_MILITARY')
-				sMessage = TRNSLTR.getText("TXT_KEY_MSG_MILITARY_CAPTIVE",())
+    BugUtil.info("CaptureSlaves: Chance to capture a captive is %d (%d - %d)",
+                 iChance, CyUnitW.captureProbabilityTotal(), CyUnitL.captureResistanceTotal())
 
-			iPlayerW = CyUnitW.getOwner()
-			X = CyUnitW.getX()
-			Y = CyUnitW.getY()
-			CyUnit = GC.getPlayer(iPlayerW).initUnit(iUnit, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			if CyUnitW.isHiddenNationality():
-				CyUnit.doHNCapture()
-			if iPlayerW == GAME.getActivePlayer():
-				CvUtil.sendMessage(sMessage, iPlayerW, 8, 'Art/Interface/Buttons/Civics/Serfdom.dds', ColorTypes(44), X, Y, True, True)
+    if iChance <= _getSorenRandNum(100, "Slave"):  # 0-99
+        return
+
+    # Determine unit type and message
+    if CyUnitL.isHasUnitCombat(_UNITCOMBAT_SPECIES_NEANDERTHAL):
+        iUnit = _UNIT_CAPTIVE_NEANDERTHAL
+        sMessage = _MSG_NEANDERTHAL_CAPTIVE
+    else:
+        iUnit = _UNIT_CAPTIVE_MILITARY
+        sMessage = _MSG_MILITARY_CAPTIVE
+
+    # Create the captive unit
+    iPlayerW = CyUnitW.getOwner()
+    X = CyUnitW.getX()
+    Y = CyUnitW.getY()
+
+    CyPlayer = _getPlayer(iPlayerW)
+    CyUnit = CyPlayer.initUnit(iUnit, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+
+    if CyUnitW.isHiddenNationality():
+        CyUnit.doHNCapture()
+
+    if iPlayerW == _GAME.getActivePlayer():
+        _sendMessage(sMessage, iPlayerW, 8, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
 
 def onCityRazed(argsList):
-	CyCity, iPlayer = argsList
-	if not CyCity: return
+    """Handle city razing and slave/captive generation."""
+    CyCity, iPlayer = argsList
+    if not CyCity:
+        return
 
-	CyPlayer = GC.getPlayer(iPlayer)
-	bHuman = CyPlayer.isHuman()
+    # Cache frequently used values as locals for faster access
+    CyPlayer = _getPlayer(iPlayer)
+    bHuman = CyPlayer.isHuman()
+    sCityName = CyCity.getName()
+    X = CyCity.getX()
+    Y = CyCity.getY()
 
-	sCityName = CyCity.getName()
-	X = CyCity.getX()
-	Y = CyCity.getY()
+    # Cache method references for repeated calls
+    getFreeSpecialistCount = CyCity.getFreeSpecialistCount
+    changeFreeSpecialistCount = CyCity.changeFreeSpecialistCount
+    initUnit = CyPlayer.initUnit
+    addMessage = _CyInterface.addMessage
+    getText = BugUtil.getText
 
-	'''
-	# Convert Great Specialists into captives or other
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_PROPHET'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_PRIESTS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage ,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    # Get all specialist counts at once to minimize function calls
+    iCountSettled = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE)
+    iCountFood = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_FOOD)
+    iCountProd = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_PRODUCTION)
+    iCountCom = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_COMMERCE)
+    iCountHealth = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_HEALTH)
+    iCountEntertain = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT)
+    iCountTutor = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_TUTOR)
+    iCountMilitary = getFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_MILITARY)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_ARTIST'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_ARTISTS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    # Process slaves that can become population or immigrants
+    # Calculate once and reuse
+    iCount = iCountSettled + iCountFood + iCountCom + iCountTutor + iCountMilitary
+    iCountNewPop = iCount / 3  # Integer division in Python 2
+    iCount = iCount - 3 * iCountNewPop
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_SCIENTIST'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_SCIENTISTS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    # Process freed slaves
+    if iCount > 0:
+        for i in xrange(iCount):
+            initUnit(_UNIT_FREED_SLAVE, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_MERCHANT'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_MERCHANTS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+        if bHuman:
+            sMessage = getText(_MSG_FREED_SLAVES_AS,
+                               (sCityName, _GC.getUnitInfo(_UNIT_FREED_SLAVE).getDescription(), iCount))
+            addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_ENGINEER'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_ENGINEERS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    # Process immigrants
+    if iCountNewPop > 0:
+        for i in xrange(iCountNewPop):
+            initUnit(_UNIT_CAPTIVE_IMMIGRANT, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_DOCTOR'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_DOCTORS",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+        if bHuman:
+            sMessage = getText(_MSG_FREED_SLAVES_AS_IMMIGRANTS, (iCountNewPop * 3, sCityName, iCountNewPop))
+            addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_SPY'))
-	if iCount > 0:
-		iCountKilled = iCount
-		Inhiding = 0
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_SPIES",(iCount,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    # Remove slaves efficiently - combine operations where possible
+    if iCountSettled > 0:
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE, -iCountSettled)
+    if iCountFood > 0:
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_FOOD, -iCountFood)
+    if iCountCom > 0:
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_COMMERCE, -iCountCom)
+    if iCountTutor > 0:
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_TUTOR, -iCountTutor)
+    if iCountMilitary > 0:
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_MILITARY, -iCountMilitary)
 
-	iCount = CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_GREAT_MILITARY_INSTRUCTOR')) + CyCity.getSpecialistCount(GC.getInfoTypeForString('SPECIALIST_MILITARY_INSTRUCTOR'))
-	if iCount > 0:
-		iCountKilled = iCount
-		iCountRebelled = 0
-		iCountCaptured = 0
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CITY_HAD_GENERALS",(iCount,iCountKilled,iCountRebelled,iCountCaptured))
-		CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
-	'''
+    # Convert production slaves to merchants
+    if iCountProd > 0:
+        for i in xrange(iCountProd):
+            initUnit(_UNIT_EARLY_MERCHANT_C2C, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_PRODUCTION, -iCountProd)
 
-	## Slaves
-	iSlaveSettled = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE")
-	iSlaveFood = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_FOOD")
-	iSlaveProd = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_PRODUCTION")
-	iSlaveCom = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_COMMERCE")
-	iSlaveHealth = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_HEALTH")
-	iSlaveEntertain = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT")
-	iSlaveTutor = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_TUTOR")
-	iSlaveMilitary = GC.getInfoTypeForString("SPECIALIST_SETTLED_SLAVE_MILITARY")
+        if bHuman:
+            sMessage = getText(_MSG_FREED_SLAVES_AS,
+                               (sCityName, _GC.getUnitInfo(_UNIT_EARLY_MERCHANT_C2C).getDescription(), iCountProd))
+            addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	iUnitCaptiveSlave = GC.getInfoTypeForString("UNIT_FREED_SLAVE")
-	iUnitImmigrant = GC.getInfoTypeForString("UNIT_CAPTIVE_IMMIGRANT")
-	iUnitEntertain = GC.getInfoTypeForString("UNIT_STORY_TELLER")
-	iUnitMerCaravan = GC.getInfoTypeForString("UNIT_EARLY_MERCHANT_C2C")
-	iUnitHealth = GC.getInfoTypeForString("UNIT_HEALER")
+    # Convert health slaves to healers
+    if iCountHealth > 0:
+        for i in xrange(iCountHealth):
+            initUnit(_UNIT_HEALER, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_HEALTH, -iCountHealth)
 
-	iCountSettled = CyCity.getFreeSpecialistCount(iSlaveSettled)
-	iCountFood = CyCity.getFreeSpecialistCount(iSlaveFood)
-	iCountProd = CyCity.getFreeSpecialistCount(iSlaveProd)
-	iCountCom = CyCity.getFreeSpecialistCount(iSlaveCom)
-	iCountHealth = CyCity.getFreeSpecialistCount(iSlaveHealth)
-	iCountEntertain = CyCity.getFreeSpecialistCount(iSlaveEntertain)
-	iCountTutor = CyCity.getFreeSpecialistCount(iSlaveTutor)
-	iCountMilitary = CyCity.getFreeSpecialistCount(iSlaveMilitary)
+        if bHuman:
+            sMessage = getText(_MSG_FREED_SLAVES_AS,
+                               (sCityName, _GC.getUnitInfo(_UNIT_HEALER).getDescription(), iCountHealth))
+            addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	## Process those that can become population or immagrants
-	##	where 3 slaves = 1 pop or immigrant
-	##	and can only increase the city pop to 7
-	iCount = iCountSettled + iCountFood + iCountCom + iCountTutor + iCountMilitary
-	iCountNewPop = int(iCount/3)
-	iCount = iCount - 3*iCountNewPop
+    # Convert entertainment slaves to story tellers
+    if iCountEntertain > 0:
+        for i in xrange(iCountEntertain):
+            initUnit(_UNIT_STORY_TELLER, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+        changeFreeSpecialistCount(_SPECIALIST_SETTLED_SLAVE_ENTERTAINMENT, -iCountEntertain)
 
-	if iCount > 0:
-		for i in xrange(iCount):
-			newunit = CyPlayer.initUnit(iUnitCaptiveSlave, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-		if bHuman:
-			sMessage = BugUtil.getText("TXT_KEY_MSG_FREED_SLAVES_AS", (sCityName, GC.getUnitInfo(iUnitCaptiveSlave).getDescription(), iCount))
-			CyInterface().addMessage(iPlayer, False, 15, sMessage, '', 0, 'Art/Interface/Buttons/Civics/Serfdom.dds', ColorTypes(44), X, Y, True, True)
+        if bHuman:
+            sMessage = getText(_MSG_FREED_SLAVES_AS,
+                               (sCityName, _GC.getUnitInfo(_UNIT_STORY_TELLER).getDescription(), iCountEntertain))
+            addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	if iCountNewPop > 0:
-		iCountImmigrants = iCountNewPop
-		if iCountImmigrants > 0:
-			for i in range (iCountImmigrants):
-				newunit = CyPlayer.initUnit(iUnitImmigrant, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			if bHuman:
-				sMessage = BugUtil.getText("TXT_KEY_MSG_FREED_SLAVES_AS_IMMIGRANTS", (iCountImmigrants*3, sCityName, iCountImmigrants))
-				CyInterface().addMessage(iPlayer, False, 15, sMessage, '', 0, 'Art/Interface/Buttons/Civics/Serfdom.dds', ColorTypes(44), X, Y, True, True)
+    # Convert population to captives
+    iCount = 0
+    iPop = CyCity.getPopulation()
 
-	## Now remove those slaves
-	if iCountSettled > 0:
-		CyCity.changeFreeSpecialistCount(iSlaveSettled,-iCountSettled)
-	if iCountFood > 0:
-		CyCity.changeFreeSpecialistCount(iSlaveFood,-iCountFood)
-	if iCountCom > 0:
-		CyCity.changeFreeSpecialistCount(iSlaveCom,-iCountCom)
-	if iCountTutor > 0:
-		CyCity.changeFreeSpecialistCount(iSlaveTutor,-iCountTutor)
-	if iCountMilitary > 0:
-		CyCity.changeFreeSpecialistCount(iSlaveMilitary,-iCountMilitary)
+    if iPop == 1:
+        if _getSorenRandNum(100, "Slave") < 66:
+            initUnit(_UNIT_CAPTIVE_CIVILIAN, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+            iCount = 1
+    else:
+        iCivilianCitizenUnits = (iPop + 1) / 2  # Integer division in Python 2
+        for loop in xrange(iCivilianCitizenUnits):
+            initUnit(_UNIT_CAPTIVE_CIVILIAN, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
+        iCount = iCivilianCitizenUnits
 
-	## Now convert the other slaves
-	if iCountProd > 0:
-		for i in range (iCountProd):
-			CyPlayer.initUnit(iUnitMerCaravan, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			CyCity.changeFreeSpecialistCount(iSlaveProd,-1)
-		if bHuman:
-			sMessage = BugUtil.getText("TXT_KEY_MSG_FREED_SLAVES_AS",(sCityName, GC.getUnitInfo(iUnitMerCaravan).getDescription(), iCountProd))
-			CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
+    if bHuman and iCount:
+        sMessage = getText(_MSG_CIVILIAN_CAPTIVE, iCount)
+        addMessage(iPlayer, False, 15, sMessage, '', 0, _SERFDOM_ICON, _ColorTypes(_COLOR_ID), X, Y, True, True)
 
-	if iCountHealth > 0:
-		for i in range (iCountProd):
-			CyPlayer.initUnit(iUnitHealth, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			CyCity.changeFreeSpecialistCount(iSlaveHealth,-1)
-		if bHuman:
-			sMessage = BugUtil.getText("TXT_KEY_MSG_FREED_SLAVES_AS",(sCityName, GC.getUnitInfo(iUnitHealth).getDescription(), iCountHealth))
-			CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
-
-	if iCountEntertain > 0:
-		for i in range (iCountEntertain):
-			CyPlayer.initUnit(iUnitEntertain, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			CyCity.changeFreeSpecialistCount(iSlaveEntertain,-1)
-		if bHuman:
-			sMessage = BugUtil.getText("TXT_KEY_MSG_FREED_SLAVES_AS",(sCityName, GC.getUnitInfo(iUnitEntertain).getDescription(), iCountEntertain))
-			CyInterface().addMessage(iPlayer,False,15, sMessage,'',0,'Art/Interface/Buttons/Civics/Serfdom.dds',ColorTypes(44), X, Y, True,True)
-
-	## Convert population to captives
-	iUnit = GC.getInfoTypeForString('UNIT_CAPTIVE_CIVILIAN')
-	iCount = 0
-	iPop = CyCity.getPopulation()
-	if iPop == 1:
-		if GAME.getSorenRandNum(100, "Slave") < 66:
-			CyPlayer.initUnit(iUnit, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			iCount = 1
-	else:
-		iCivilianCitizenUnits = (iPop + 1) / 2
-		for loop in xrange(iCivilianCitizenUnits):
-			CyPlayer.initUnit(iUnit, X, Y, UnitAITypes.NO_UNITAI, DirectionTypes.NO_DIRECTION)
-			iCount += 1
-
-	if bHuman and iCount:
-		sMessage = BugUtil.getText("TXT_KEY_MSG_CIVILIAN_CAPTIVE", iCount)
-		CyInterface().addMessage(iPlayer, False, 15, sMessage, '', 0, 'Art/Interface/Buttons/Civics/Serfdom.dds', ColorTypes(44), X, Y, True, True)
+    # Clear local references to allow garbage collection
+    del CyCity, CyPlayer

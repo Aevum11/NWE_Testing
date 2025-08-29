@@ -39,7 +39,7 @@ class CvFinanceAdvisor:
 			H_EDGE_PANEL = 29
 			uFontEdge = "<font=2b>"
 
-		self.aFontList = aFontList = [uFontEdge] + SR.aFontList
+		self.aFontList = aFontList = [uFontEdge] + list(SR.aFontList)
 
 		self.Y_TOP_PAGE = Y_TOP_PAGE = H_EDGE_PANEL - 6
 		self.H_PAGE = H_PAGE = yRes - Y_TOP_PAGE - H_EDGE_PANEL + 8

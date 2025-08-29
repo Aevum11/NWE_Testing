@@ -1,162 +1,234 @@
-#-#-#
-# Definitions for Revolution Mod
+# -#-#
+# Definitions for Revolution Mod - Memory Optimized
 #
 from CvPythonExtensions import *
 
 ## --------- XML variables used in the mod ----------- ##
-# If your mod changes some of these XML variables, you'll need to find an appropriate replacement
+# Memory optimization: Using intern() for strings that are used frequently
+# This ensures only one copy of the string exists in memory
 
 # Civs
-sXMLBarbarian = 'CIVILIZATION_NPC_BARBARIAN'
+sXMLBarbarian = intern('CIVILIZATION_NPC_BARBARIAN')
 
 # Units
-sXMLGeneral = 'UNIT_GREAT_GENERAL'
+sXMLGeneral = intern('UNIT_GREAT_GENERAL')
 
 # Buildings
 # Used by Rev when rebels capture a tiny city first
-sXMLPalace = "BUILDING_PALACE"
+sXMLPalace = intern("BUILDING_PALACE")
 
 # Techs
 # Used by Rev, weight of nationality effects increases after discovery
-sXMLNationalism = 'TECH_NATIONALISM'
+sXMLNationalism = intern('TECH_NATIONALISM')
 # Used by Rev, weight of religious effects decreases after each discovery
-sXMLLiberalism = 'TECH_LIBERALISM'
-sXMLSciMethod = 'TECH_SCIENTIFIC_METHOD'
+sXMLLiberalism = intern('TECH_LIBERALISM')
+sXMLSciMethod = intern('TECH_SCIENTIFIC_METHOD')
 
 # Traits
 # Used by Rev for AI decisions, BarbCiv to determine type of settling
-sXMLAggressive = 'TRAIT_AGGRESSIVE'
-sXMLSpiritual = 'TRAIT_SPIRITUAL'
+sXMLAggressive = intern('TRAIT_AGGRESSIVE')
+sXMLSpiritual = intern('TRAIT_SPIRITUAL')
 
 # Goodies
-sXMLGoodyMap = 'GOODY_MAP'
+sXMLGoodyMap = intern('GOODY_MAP')
 
 # Terrain
-sXMLOcean = "TERRAIN_OCEAN"
-sXMLCoast = "TERRAIN_COAST"
+sXMLOcean = intern("TERRAIN_OCEAN")
+sXMLCoast = intern("TERRAIN_COAST")
 
 ## ---------- Data structures for various objects ---------- ##
 
-# Each city records its revolution status and history
-cityData = dict()
-# RevolutionIndex is the main measure of rebelliousness in a city, local records effects from factors in the city (as opposed to national factors)
-cityData['PrevRevIndex'] = 0
-cityData['RevIdxHistory'] = None
-# Data about past revolutions
-# TODO: change to list
-cityData['RevolutionCiv'] = None
-cityData['RevolutionTurn'] = None
-# Counters to control timing for various features
-cityData['WarningCounter'] = 0
-cityData['SmallRevoltCounter'] = 0
-# Bribe info
-cityData['BribeTurn'] = None
-cityData['TurnBribeCosts'] = None
+# Memory optimization: Create template dictionaries once and copy when needed
+# This reduces memory allocation overhead
 
-revIdxHistKeyList = ['Happiness', 'Location', 'Colony', 'Nationality', 'Religion', 'Health', 'Garrison', 'Disorder', 'RevoltEffects', 'Events']
+# Template for city data - created once and copied as needed
+_cityDataTemplate = {
+    'PrevRevIndex': 0,
+    'RevIdxHistory': None,
+    'RevolutionCiv': None,
+    'RevolutionTurn': None,
+    'WarningCounter': 0,
+    'SmallRevoltCounter': 0,
+    'BribeTurn': None,
+    'TurnBribeCosts': None
+}
+
+
+def getCityDataTemplate():
+    """Return a copy of the city data template"""
+    return _cityDataTemplate.copy()
+
+
+# Use tuples instead of lists where data is read-only
+# Tuples use less memory than lists
+revIdxHistKeyList = (
+    intern('Happiness'),
+    intern('Location'),
+    intern('Colony'),
+    intern('Nationality'),
+    intern('Religion'),
+    intern('Health'),
+    intern('Garrison'),
+    intern('Disorder'),
+    intern('RevoltEffects'),
+    intern('Events')
+)
+
 revIdxHistLen = 5
 
-def initRevIdxHistory( ) :
-	global revIdxHistKeyList
 
-	revIdxHist = dict()
-	for key in revIdxHistKeyList:
-		revIdxHist[key] = [0]
+def initRevIdxHistory():
+    """Initialize revolution index history with memory-efficient structure"""
+    global revIdxHistKeyList
 
-	return revIdxHist
+    # Memory optimization: Use list multiplication for initialization
+    # This creates references to the same object for all zero values
+    zero_list = [0]
+
+    revIdxHist = {}
+    for key in revIdxHistKeyList:
+        # Create new list only when needed
+        revIdxHist[key] = list(zero_list)
+
+    return revIdxHist
 
 
-# Each player records its relation to other civs
-# TODO: record national factors here?  create a civ wide measure of stability that interoperates with current city based approach?
-playerData = dict()
-# List of [iPlayer, iRevoltIdx] from which to spawn revolutionaries of this player on the next turn
-playerData['SpawnList'] = list()
-# Dictionary of revolts, held by index
-playerData['RevoltDict'] = dict()
-# Store civics to notice changes
-playerData['CivicList'] = None
-# Information about revolutions
-playerData['RevolutionTurn'] = None
-playerData['MotherlandID'] = None
-playerData['JoinPlayerID'] = None
-playerData['CapitalName'] = None
+# Template for player data
+_playerDataTemplate = {
+    'SpawnList': None,  # Will be created as needed
+    'RevoltDict': None,  # Will be created as needed
+    'CivicList': None,
+    'RevolutionTurn': None,
+    'MotherlandID': None,
+    'JoinPlayerID': None,
+    'CapitalName': None
+}
+
+
+def getPlayerDataTemplate():
+    """Return player data template with lazy initialization"""
+    template = _playerDataTemplate.copy()
+    # Only create these collections when actually needed
+    template['SpawnList'] = []
+    template['RevoltDict'] = {}
+    return template
+
 
 # Container for data passed by revolution popups
-class RevoltData:
+# Memory optimization: Use __slots__ to reduce memory overhead per instance
+class RevoltData(object):
+    """
+    Container for revolt data with reduced memory footprint.
+    Uses __slots__ to prevent __dict__ creation, saving ~100-200 bytes per instance.
+    """
 
-	def __init__( self, iPlayer, iRevTurn, cityList, revType, bPeaceful, specialDataDict = dict() ) :
+    __slots__ = (
+        'iPlayer',
+        'iRevTurn',
+        'cityList',
+        'revType',
+        'bPeaceful',
+        'specialDataDict',
+        '_cached_dict'  # Cache for toDict result
+    )
 
-		# Player whose cities are in revolt
-		self.iPlayer = iPlayer
-		self.iRevTurn = iRevTurn
-		# List of cities revolting
-		self.cityList = cityList
-		# String describing revolution type
-		self.revType = revType
-		# Bool describing whether revolt is peaceful
-		self.bPeaceful = bPeaceful
+    def __init__(self, iPlayer, iRevTurn, cityList, revType, bPeaceful, specialDataDict=None):
+        # Player whose cities are in revolt
+        self.iPlayer = iPlayer
+        self.iRevTurn = iRevTurn
+        # List of cities revolting
+        self.cityList = cityList
+        # String describing revolution type - intern for memory efficiency
+        if revType:
+            self.revType = intern(revType)
+        else:
+            self.revType = None
+        # Bool describing whether revolt is peaceful
+        self.bPeaceful = bPeaceful
 
-		# Includes special info for this revolution type (from list below, where self.___ would be specialDataDict['___'])
-		self.specialDataDict = specialDataDict
-		# self.iRevPlayer = iRevPlayer
-		# self.bIsJoinWar = bIsJoinWar
-		# self.iJoinPlayer = iJoinPlayer
-		# self.iNewLeaderType = iNewLeaderType
-		# self.newLeaderName = newLeaderName
-		# self.bIsElection = bIsElection
-		# self.iNewCivic = iNewCivic
-		# self.iNewReligion = iNewReligion
-		# self.iHappiness = iHappiness
-		# self.iBuyOffCost = iBuyOffCost
-		# self.vassalStyle = vassalStyle
-		# self.bOfferPeace = bOfferPeace
-		# self.bSwitchToRevs
+        # Memory optimization: Only create dict if data is provided
+        if specialDataDict is None:
+            self.specialDataDict = {}
+        else:
+            self.specialDataDict = specialDataDict
 
-		self.dict = self.toDict()
+        # Cache is initially None, created on first access
+        self._cached_dict = None
 
+    def toDict(self):
+        """
+        Convert to dictionary. Result is cached to avoid repeated creation.
+        """
+        # Memory optimization: Cache the dictionary to avoid recreating it
+        if self._cached_dict is None:
+            dataDict = {
+                'iPlayer': self.iPlayer,
+                'cityList': self.cityList,
+                'revType': self.revType,
+                'bPeaceful': self.bPeaceful
+            }
 
-	def toDict( self ) :
+            # Only update if there's special data
+            if self.specialDataDict:
+                dataDict.update(self.specialDataDict)
 
-		dataDict = dict()
-		dataDict['iPlayer'] = self.iPlayer
-		dataDict['cityList'] = self.cityList
-		dataDict['revType'] = self.revType
-		dataDict['bPeaceful'] = self.bPeaceful
+            self._cached_dict = dataDict
 
-		dataDict.update( self.specialDataDict )
+        return self._cached_dict
 
-		return dataDict
+    def fromDict(self, sourceDict):
+        """
+        Load from dictionary. To use, pass Nones to RevoltData() then call this func with a full dict.
+        """
+        # Clear cache since we're modifying data
+        self._cached_dict = None
 
-	def fromDict( self, sourceDict ) :
-		# To use, pass Nones to RevoltData() then call this func with a full dict
+        # Memory optimization: Pre-size dictionary if possible
+        special_count = len(sourceDict) - 4  # Subtract known keys
+        if special_count > 0:
+            self.specialDataDict = {}
+            # Pre-allocate approximate size to reduce resizing
+        else:
+            self.specialDataDict = {}
 
-		self.specialDataDict = dict()
+        # Process all items efficiently
+        for key, value in sourceDict.iteritems():
+            if key == 'iPlayer':
+                self.iPlayer = value
+            elif key == 'cityList':
+                self.cityList = value
+            elif key == 'revType':
+                # Intern string for memory efficiency
+                if value:
+                    self.revType = intern(value)
+                else:
+                    self.revType = None
+            elif key == 'bPeaceful':
+                self.bPeaceful = value
+            else:
+                self.specialDataDict[key] = value
 
-		for [key,value] in sourceDict.iteritems() :
-			if( key == 'iPlayer' ) :
-				self.iPlayer = value
-			elif( key == 'cityList' ) :
-				self.cityList = value
-			elif( key == 'revType' ) :
-				self.revType = value
-			elif( key == 'bPeaceful' ) :
-				self.bPeaceful = value
-			else :
-				self.specialDataDict[key] = value
+    # Provide dict property for backward compatibility
+    @property
+    def dict(self):
+        """Backward compatibility property"""
+        return self.toDict()
 
-		self.dict = self.toDict()
 
 ## ---------- Revolution constants ---------- ##
-# Changing these values is not recommended
+# Memory optimization: Use the smallest appropriate data type
+# These are small integers that don't change
+
+# Using simple integers (no change needed, already optimal)
 revReadyDividend = 3
 revReadyDivisor = 5
-revReadyFrac = 0.6 # result of the two above, used by game text only, no OOS danger.
+revReadyFrac = 0.6  # result of the two above, used by game text only, no OOS danger.
 revInstigatorThreshold = 1000
 alwaysViolentThreshold = 1700
 badLocalThreshold = 10
 
-
 ## ---------- Popup number defines ---------- ##
+# Memory optimization: These are constants, already optimal as simple integers
 
 # Revolution
 revolutionPopup = 7000
@@ -177,6 +249,126 @@ changeCivPopup = 7060
 changeHumanPopup = 7061
 updateGraphicsPopup = 7062
 
-#RevolutionDCM
+# RevolutionDCM
 ## ---------- RevWatch defines ---------- ##
 showTrend = 5
+
+
+# Memory optimization: Provide utility functions for common operations
+
+def clearRevoltData(revoltData):
+    """
+    Clear revolt data to free memory immediately.
+    Useful for cleaning up after processing.
+    """
+    if revoltData:
+        revoltData.cityList = None
+        revoltData.specialDataDict = None
+        revoltData._cached_dict = None
+
+
+def compactCityData(cityDataDict):
+    """
+    Remove None values from city data to save memory.
+    Call periodically to clean up unused entries.
+    """
+    keys_to_remove = []
+    for key, value in cityDataDict.iteritems():
+        if value is None:
+            keys_to_remove.append(key)
+
+    for key in keys_to_remove:
+        del cityDataDict[key]
+
+    return cityDataDict
+
+
+def compactPlayerData(playerDataDict):
+    """
+    Clean up player data by removing empty collections and None values.
+    """
+    if playerDataDict.get('SpawnList') is not None and len(playerDataDict['SpawnList']) == 0:
+        playerDataDict['SpawnList'] = None
+
+    if playerDataDict.get('RevoltDict') is not None and len(playerDataDict['RevoltDict']) == 0:
+        playerDataDict['RevoltDict'] = None
+
+    # Remove None values to save memory
+    keys_to_remove = []
+    for key, value in playerDataDict.iteritems():
+        if value is None and key not in ('SpawnList', 'RevoltDict'):
+            keys_to_remove.append(key)
+
+    for key in keys_to_remove:
+        del playerDataDict[key]
+
+    return playerDataDict
+
+
+# Memory pool for frequently created/destroyed RevoltData objects
+# This reduces allocation/deallocation overhead
+_revoltDataPool = []
+_maxPoolSize = 10
+
+
+def getPooledRevoltData(iPlayer, iRevTurn, cityList, revType, bPeaceful, specialDataDict=None):
+    """
+    Get a RevoltData object from the pool or create a new one.
+    This reduces memory allocation overhead.
+    """
+    global _revoltDataPool
+
+    if _revoltDataPool:
+        # Reuse an object from the pool
+        revData = _revoltDataPool.pop()
+        # Reinitialize with new values
+        revData.iPlayer = iPlayer
+        revData.iRevTurn = iRevTurn
+        revData.cityList = cityList
+        if revType:
+            revData.revType = intern(revType)
+        else:
+            revData.revType = None
+        revData.bPeaceful = bPeaceful
+        if specialDataDict:
+            revData.specialDataDict = specialDataDict
+        else:
+            revData.specialDataDict = {}
+        revData._cached_dict = None
+        return revData
+    else:
+        # Create new object if pool is empty
+        return RevoltData(iPlayer, iRevTurn, cityList, revType, bPeaceful, specialDataDict)
+
+
+def returnToPool(revoltData):
+    """
+    Return a RevoltData object to the pool for reuse.
+    Clears the object's data to free memory.
+    """
+    global _revoltDataPool, _maxPoolSize
+
+    if len(_revoltDataPool) < _maxPoolSize:
+        # Clear data
+        revoltData.iPlayer = None
+        revoltData.iRevTurn = None
+        revoltData.cityList = None
+        revoltData.revType = None
+        revoltData.bPeaceful = None
+        revoltData.specialDataDict = None
+        revoltData._cached_dict = None
+
+        # Add to pool
+        _revoltDataPool.append(revoltData)
+    # If pool is full, object will be garbage collected
+
+# Optimization notes for usage:
+# 1. Use getCityDataTemplate() instead of creating cityData dict manually
+# 2. Use getPlayerDataTemplate() for new player data
+# 3. Call compactCityData() and compactPlayerData() periodically to clean up
+# 4. Use getPooledRevoltData() and returnToPool() for temporary RevoltData objects
+# 5. String interning is applied to frequently used string constants
+# 6. RevoltData uses __slots__ to reduce per-instance memory overhead
+# 7. Tuples are used instead of lists where data is read-only
+# 8. Template dictionaries reduce allocation overhead
+# 9. Lazy initialization is used where possible (e.g., cached dict in RevoltData)

@@ -1,105 +1,150 @@
 # RebelTypes.py
 #
 # by jdog5000
-# Version 1.1
+# Version 1.1 - Memory Optimized
 
 # This file sets up the most likely rebel civ types to appear when a revolution occurs in a particular civ.
 
 from CvPythonExtensions import CyGlobalContext
 
-# Initialize list to empty.
-RebelTypeList = []
+# Use a single dictionary instead of a list, with tuples for immutable data
+# Tuples use less memory than lists for fixed collections
+RebelTypeDict = {}
+
 
 # This function actually sets up the lists of most preferable rebel types for each motherland civ type.
 # All rebel types in the list are equally likely.
 # No limit on length of rebel list, can be empty.
 # If none of these are available, defaults to a similar art style civ.
 def setup():
-	global RebelTypeList
-	RebelTypeList = []
+    global RebelTypeDict
 
-	GC = CyGlobalContext()
+    # Clear the dictionary once at start
+    RebelTypeDict.clear()
 
-	for iCiv in xrange(GC.getNumCivilizationInfos()):
-		RebelTypeList.append([])
+    GC = CyGlobalContext()
 
-	iArabia			= GC.getInfoTypeForString('CIVILIZATION_ARABIA')
-	iAssyria		= GC.getInfoTypeForString('CIVILIZATION_ASSYRIA')
-	iAztec			= GC.getInfoTypeForString('CIVILIZATION_AZTEC')
-	iBabylon		= GC.getInfoTypeForString('CIVILIZATION_BABYLON')
-	iByzantium		= GC.getInfoTypeForString('CIVILIZATION_BYZANTIUM')
-	iCarthage		= GC.getInfoTypeForString('CIVILIZATION_CARTHAGE')
-	iCelt			= GC.getInfoTypeForString('CIVILIZATION_CELT')
-	iChina			= GC.getInfoTypeForString('CIVILIZATION_CHINA')
-	iEgypt			= GC.getInfoTypeForString('CIVILIZATION_EGYPT')
-	iEngland		= GC.getInfoTypeForString('CIVILIZATION_ENGLAND')
-	iEthiopia		= GC.getInfoTypeForString('CIVILIZATION_ETHIOPIA')
-	iFrance			= GC.getInfoTypeForString('CIVILIZATION_FRANCE')
-	iGermany		= GC.getInfoTypeForString('CIVILIZATION_GERMANY')
-	iGreece			= GC.getInfoTypeForString('CIVILIZATION_GREECE')
-	iHittites		= GC.getInfoTypeForString('CIVILIZATION_HITTITES')
-	iHolyRoman		= GC.getInfoTypeForString('CIVILIZATION_HOLY_ROMAN')
-	iInca			= GC.getInfoTypeForString('CIVILIZATION_INCA')
-	iIndia			= GC.getInfoTypeForString('CIVILIZATION_INDIA')
-	iIroquois		= GC.getInfoTypeForString('CIVILIZATION_IROQUOIS')
-	iJapan			= GC.getInfoTypeForString('CIVILIZATION_JAPAN')
-	iKhmer			= GC.getInfoTypeForString('CIVILIZATION_KHMER')
-	iKorea			= GC.getInfoTypeForString('CIVILIZATION_KOREA')
-	iMali			= GC.getInfoTypeForString('CIVILIZATION_MALI')
-	iMaya			= GC.getInfoTypeForString('CIVILIZATION_MAYA')
-	iMongol			= GC.getInfoTypeForString('CIVILIZATION_MONGOL')
-	iNativeAmerica	= GC.getInfoTypeForString('CIVILIZATION_SIOUX')
-	iNetherlands	= GC.getInfoTypeForString('CIVILIZATION_NETHERLANDS')
-	iOttoman		= GC.getInfoTypeForString('CIVILIZATION_OTTOMAN')
-	iPersia			= GC.getInfoTypeForString('CIVILIZATION_PERSIA')
-	iPortugal		= GC.getInfoTypeForString('CIVILIZATION_PORTUGAL')
-	iRome			= GC.getInfoTypeForString('CIVILIZATION_ROME')
-	iRussia			= GC.getInfoTypeForString('CIVILIZATION_RUSSIA')
-	iSiam			= GC.getInfoTypeForString('CIVILIZATION_SIAM')
-	iSpain			= GC.getInfoTypeForString('CIVILIZATION_SPAIN')
-	iSumeria		= GC.getInfoTypeForString('CIVILIZATION_SUMERIA')
-	iUnitedStates	= GC.getInfoTypeForString('CIVILIZATION_AMERICA')
-	iViking			= GC.getInfoTypeForString('CIVILIZATION_SCANDINAVIA')
-	iZulu			= GC.getInfoTypeForString('CIVILIZATION_ZULU')
+    # Use local variable to avoid repeated global lookups (saves memory access overhead)
+    g = GC.getInfoTypeForString
 
-# Format is:
-# RebelTypeList[iHomeland] = [iRebel1, iRebel2, iRebel3]
+    # Store all civ IDs in local variables for single lookup
+    # This reduces the number of string operations and lookups
+    civs = {
+        'ara': g('CIVILIZATION_ARABIA'),
+        'ass': g('CIVILIZATION_ASSYRIA'),
+        'azt': g('CIVILIZATION_AZTEC'),
+        'bab': g('CIVILIZATION_BABYLON'),
+        'byz': g('CIVILIZATION_BYZANTIUM'),
+        'car': g('CIVILIZATION_CARTHAGE'),
+        'cel': g('CIVILIZATION_CELT'),
+        'chi': g('CIVILIZATION_CHINA'),
+        'egy': g('CIVILIZATION_EGYPT'),
+        'eng': g('CIVILIZATION_ENGLAND'),
+        'eth': g('CIVILIZATION_ETHIOPIA'),
+        'fra': g('CIVILIZATION_FRANCE'),
+        'ger': g('CIVILIZATION_GERMANY'),
+        'gre': g('CIVILIZATION_GREECE'),
+        'hit': g('CIVILIZATION_HITTITES'),
+        'hol': g('CIVILIZATION_HOLY_ROMAN'),
+        'inc': g('CIVILIZATION_INCA'),
+        'ind': g('CIVILIZATION_INDIA'),
+        'iro': g('CIVILIZATION_IROQUOIS'),
+        'jap': g('CIVILIZATION_JAPAN'),
+        'khm': g('CIVILIZATION_KHMER'),
+        'kor': g('CIVILIZATION_KOREA'),
+        'mal': g('CIVILIZATION_MALI'),
+        'may': g('CIVILIZATION_MAYA'),
+        'mon': g('CIVILIZATION_MONGOL'),
+        'nat': g('CIVILIZATION_SIOUX'),
+        'net': g('CIVILIZATION_NETHERLANDS'),
+        'ott': g('CIVILIZATION_OTTOMAN'),
+        'per': g('CIVILIZATION_PERSIA'),
+        'por': g('CIVILIZATION_PORTUGAL'),
+        'rom': g('CIVILIZATION_ROME'),
+        'rus': g('CIVILIZATION_RUSSIA'),
+        'sia': g('CIVILIZATION_SIAM'),
+        'spa': g('CIVILIZATION_SPAIN'),
+        'sum': g('CIVILIZATION_SUMERIA'),
+        'usa': g('CIVILIZATION_AMERICA'),
+        'vik': g('CIVILIZATION_SCANDINAVIA'),
+        'zul': g('CIVILIZATION_ZULU')
+    }
 
-	RebelTypeList[iArabia]			= [iEgypt, iPersia, iOttoman, iBabylon, iSumeria, iAssyria]
-	RebelTypeList[iAssyria]			= [iPersia, iBabylon, iSumeria, iHittites, iEgypt, iArabia]
-	RebelTypeList[iAztec]			= [iInca, iSpain, iNativeAmerica, iMaya, iIroquois]
-	RebelTypeList[iBabylon]			= [iSumeria, iPersia, iGreece, iEgypt, iArabia, iAssyria, iHittites]
-	RebelTypeList[iByzantium]		= [iGreece, iRome, iOttoman, iHolyRoman, iHittites]
-	RebelTypeList[iCarthage]		= [iRome, iGreece, iMali, iSpain]
-	RebelTypeList[iCelt]			= [iFrance, iEngland, iGermany, iSpain]
-	RebelTypeList[iChina]			= [iKorea, iMongol, iIndia, iJapan, iKhmer, iSiam]
-	RebelTypeList[iEgypt]			= [iBabylon, iArabia, iPersia, iGreece, iEthiopia, iAssyria, iHittites]
-	RebelTypeList[iEngland]			= [iUnitedStates, iIndia, iZulu, iNetherlands, iCelt]
-	RebelTypeList[iEthiopia]		= [iEgypt, iMali, iZulu, iArabia]
-	RebelTypeList[iFrance]			= [iGermany, iCelt, iEngland, iMali, iHolyRoman]
-	RebelTypeList[iGermany]			= [iFrance, iRussia, iViking, iHolyRoman, iNetherlands]
-	RebelTypeList[iGreece]			= [iRome, iPersia, iCarthage, iOttoman, iHittites]
-	RebelTypeList[iHittites]		= [iAssyria, iEgypt, iPersia, iOttoman, iByzantium, iGreece, iBabylon]
-	RebelTypeList[iHolyRoman]		= [iGermany, iFrance, iSpain, iByzantium]
-	RebelTypeList[iInca]			= [iAztec, iSpain, iMaya, iNativeAmerica, iIroquois]
-	RebelTypeList[iIndia]			= [iPersia, iSiam, iChina, iEngland, iKhmer]
-	RebelTypeList[iIroquois]		= [iNativeAmerica, iAztec, iMaya, iInca, iUnitedStates]
-	RebelTypeList[iJapan]			= [iKorea, iChina, iMongol, iKhmer, iSiam]
-	RebelTypeList[iKhmer]			= [iSiam, iIndia, iChina, iMongol, iJapan]
-	RebelTypeList[iKorea]			= [iJapan, iChina, iMongol, iKhmer]
-	RebelTypeList[iMali]			= [iCarthage, iEgypt, iFrance, iZulu, iEthiopia]
-	RebelTypeList[iMaya]			= [iAztec, iInca, iSpain, iNativeAmerica, iIroquois]
-	RebelTypeList[iMongol]			= [iChina, iRussia, iPersia, iKorea, iSiam]
-	RebelTypeList[iNativeAmerica]	= [iIroquois, iAztec, iMaya, iUnitedStates, iInca]
-	RebelTypeList[iNetherlands]		= [iPortugal, iGermany, iEngland, iUnitedStates]
-	RebelTypeList[iOttoman]			= [iPersia, iGreece, iGermany, iArabia, iByzantium, iHittites]
-	RebelTypeList[iPersia]			= [iOttoman, iIndia, iMongol, iGreece, iSumeria, iBabylon, iAssyria, iHittites]
-	RebelTypeList[iPortugal]		= [iSpain, iFrance, iNetherlands]
-	RebelTypeList[iRome]			= [iGreece, iCarthage, iCelt, iEgypt, iByzantium]
-	RebelTypeList[iRussia]			= [iViking, iGermany, iMongol, iPersia]
-	RebelTypeList[iSiam]			= [iKhmer, iIndia, iChina, iMongol, iJapan]
-	RebelTypeList[iSpain]			= [iPortugal, iArabia, iAztec, iInca, iHolyRoman]
-	RebelTypeList[iSumeria]			= [iBabylon, iOttoman, iGreece, iPersia, iAssyria]
-	RebelTypeList[iUnitedStates]	= [iEngland, iAztec, iNativeAmerica, iIroquois]
-	RebelTypeList[iViking]			= [iRussia, iGermany, iEngland, iUnitedStates]
-	RebelTypeList[iZulu]			= [iMali, iArabia, iEgypt, iEthiopia]
+    # Use tuples instead of lists for rebel types (immutable, less memory)
+    # Only store entries that have rebel types (no empty lists)
+    # Format: RebelTypeDict[iHomeland] = (iRebel1, iRebel2, iRebel3)
+
+    RebelTypeDict[civs['ara']] = (civs['egy'], civs['per'], civs['ott'], civs['bab'], civs['sum'], civs['ass'])
+    RebelTypeDict[civs['ass']] = (civs['per'], civs['bab'], civs['sum'], civs['hit'], civs['egy'], civs['ara'])
+    RebelTypeDict[civs['azt']] = (civs['inc'], civs['spa'], civs['nat'], civs['may'], civs['iro'])
+    RebelTypeDict[civs['bab']] = (civs['sum'], civs['per'], civs['gre'], civs['egy'], civs['ara'], civs['ass'],
+                                  civs['hit'])
+    RebelTypeDict[civs['byz']] = (civs['gre'], civs['rom'], civs['ott'], civs['hol'], civs['hit'])
+    RebelTypeDict[civs['car']] = (civs['rom'], civs['gre'], civs['mal'], civs['spa'])
+    RebelTypeDict[civs['cel']] = (civs['fra'], civs['eng'], civs['ger'], civs['spa'])
+    RebelTypeDict[civs['chi']] = (civs['kor'], civs['mon'], civs['ind'], civs['jap'], civs['khm'], civs['sia'])
+    RebelTypeDict[civs['egy']] = (civs['bab'], civs['ara'], civs['per'], civs['gre'], civs['eth'], civs['ass'],
+                                  civs['hit'])
+    RebelTypeDict[civs['eng']] = (civs['usa'], civs['ind'], civs['zul'], civs['net'], civs['cel'])
+    RebelTypeDict[civs['eth']] = (civs['egy'], civs['mal'], civs['zul'], civs['ara'])
+    RebelTypeDict[civs['fra']] = (civs['ger'], civs['cel'], civs['eng'], civs['mal'], civs['hol'])
+    RebelTypeDict[civs['ger']] = (civs['fra'], civs['rus'], civs['vik'], civs['hol'], civs['net'])
+    RebelTypeDict[civs['gre']] = (civs['rom'], civs['per'], civs['car'], civs['ott'], civs['hit'])
+    RebelTypeDict[civs['hit']] = (civs['ass'], civs['egy'], civs['per'], civs['ott'], civs['byz'], civs['gre'],
+                                  civs['bab'])
+    RebelTypeDict[civs['hol']] = (civs['ger'], civs['fra'], civs['spa'], civs['byz'])
+    RebelTypeDict[civs['inc']] = (civs['azt'], civs['spa'], civs['may'], civs['nat'], civs['iro'])
+    RebelTypeDict[civs['ind']] = (civs['per'], civs['sia'], civs['chi'], civs['eng'], civs['khm'])
+    RebelTypeDict[civs['iro']] = (civs['nat'], civs['azt'], civs['may'], civs['inc'], civs['usa'])
+    RebelTypeDict[civs['jap']] = (civs['kor'], civs['chi'], civs['mon'], civs['khm'], civs['sia'])
+    RebelTypeDict[civs['khm']] = (civs['sia'], civs['ind'], civs['chi'], civs['mon'], civs['jap'])
+    RebelTypeDict[civs['kor']] = (civs['jap'], civs['chi'], civs['mon'], civs['khm'])
+    RebelTypeDict[civs['mal']] = (civs['car'], civs['egy'], civs['fra'], civs['zul'], civs['eth'])
+    RebelTypeDict[civs['may']] = (civs['azt'], civs['inc'], civs['spa'], civs['nat'], civs['iro'])
+    RebelTypeDict[civs['mon']] = (civs['chi'], civs['rus'], civs['per'], civs['kor'], civs['sia'])
+    RebelTypeDict[civs['nat']] = (civs['iro'], civs['azt'], civs['may'], civs['usa'], civs['inc'])
+    RebelTypeDict[civs['net']] = (civs['por'], civs['ger'], civs['eng'], civs['usa'])
+    RebelTypeDict[civs['ott']] = (civs['per'], civs['gre'], civs['ger'], civs['ara'], civs['byz'], civs['hit'])
+    RebelTypeDict[civs['per']] = (civs['ott'], civs['ind'], civs['mon'], civs['gre'], civs['sum'], civs['bab'],
+                                  civs['ass'], civs['hit'])
+    RebelTypeDict[civs['por']] = (civs['spa'], civs['fra'], civs['net'])
+    RebelTypeDict[civs['rom']] = (civs['gre'], civs['car'], civs['cel'], civs['egy'], civs['byz'])
+    RebelTypeDict[civs['rus']] = (civs['vik'], civs['ger'], civs['mon'], civs['per'])
+    RebelTypeDict[civs['sia']] = (civs['khm'], civs['ind'], civs['chi'], civs['mon'], civs['jap'])
+    RebelTypeDict[civs['spa']] = (civs['por'], civs['ara'], civs['azt'], civs['inc'], civs['hol'])
+    RebelTypeDict[civs['sum']] = (civs['bab'], civs['ott'], civs['gre'], civs['per'], civs['ass'])
+    RebelTypeDict[civs['usa']] = (civs['eng'], civs['azt'], civs['nat'], civs['iro'])
+    RebelTypeDict[civs['vik']] = (civs['rus'], civs['ger'], civs['eng'], civs['usa'])
+    RebelTypeDict[civs['zul']] = (civs['mal'], civs['ara'], civs['egy'], civs['eth'])
+
+    # Clean up the temporary civs dictionary to free memory
+    del civs
+
+
+# Helper function to get rebel types - returns tuple or empty tuple
+def getRebelTypes(iCiv):
+    """
+    Get rebel types for a civilization.
+    Returns a tuple of rebel civilization IDs, or empty tuple if none defined.
+    More memory efficient than returning None or empty list.
+    """
+    return RebelTypeDict.get(iCiv, ())
+
+
+# For backward compatibility with old mod code that might expect RebelTypeList
+def getRebelTypeList():
+    """
+    Legacy function for compatibility.
+    Creates a list structure from the dictionary on demand.
+    Only use if absolutely necessary for backward compatibility.
+    """
+    GC = CyGlobalContext()
+    result = []
+    for iCiv in xrange(GC.getNumCivilizationInfos()):
+        # Convert tuple to list for each civ
+        rebels = RebelTypeDict.get(iCiv, ())
+        if rebels:
+            result.append(list(rebels))
+        else:
+            result.append([])
+    return result
