@@ -176,7 +176,11 @@ class UnitReName(object):
 
         while "^cnt" in zsName:
             # Get counter key
+<<<<<<< Updated upstream
             zsSDKey = self._getCounterKey(zsName, replacements, pCity)
+=======
+            zsSDKey = self._getCounterKey(zsName, replacements, pCity, pUnit)
+>>>>>>> Stashed changes
 
             # Get or create counter table
             if not counters.hasTable(zsSDKey):
@@ -186,9 +190,15 @@ class UnitReName(object):
                 counter = counters.getTable(zsSDKey)
             else:
                 counter = counters.getTable(zsSDKey)
+<<<<<<< Updated upstream
                 ziCnt = counter["cnt"]
                 ziTT1 = counter["tt1"]
                 ziTT2 = counter["tt2"]
+=======
+                ziCnt = counter.get("cnt", 0)
+                ziTT1 = counter.get("tt1", self._getTotal1(zsName))
+                ziTT2 = counter.get("tt2", self._getTotal2(zsName))
+>>>>>>> Stashed changes
 
             # Increment if needed
             if bIncrementCounter:
@@ -209,7 +219,11 @@ class UnitReName(object):
 
         return zsName
 
+<<<<<<< Updated upstream
     def _getCounterKey(self, conv, replacements, pCity):
+=======
+    def _getCounterKey(self, conv, replacements, pCity, pUnit):
+>>>>>>> Stashed changes
         """Get the counter key based on the convention"""
         ziStart = conv.find("^cnt[")
         if ziStart == -1:
@@ -233,18 +247,39 @@ class UnitReName(object):
         base_key = key_map.get(zsValue, zsValue)
 
         # Build the full key if needed
+<<<<<<< Updated upstream
         if base_key == "UNIT" and "^ut^" in replacements:
             return base_key + replacements.get("^ut^", "")
         elif base_key == "COMBAT" and "^cb^" in replacements:
             return base_key + replacements.get("^cb^", "")
+=======
+        if base_key == "UNIT":
+            unit_part = replacements.get("^ut^")
+            if not unit_part and pUnit:
+                unit_part = GC.getUnitInfo(pUnit.getUnitType()).getType()  # stable, non-localized
+            return base_key + (unit_part or "")
+        elif base_key == "COMBAT":
+            combat_part = replacements.get("^cb^")
+            if not combat_part and pUnit:
+                combat_part = self._getUnitCombatOptimized(pUnit)  # e.g., UNITCOMBAT_MELEE
+            return base_key + (combat_part or "")
+>>>>>>> Stashed changes
         elif base_key == "CITY":
             return base_key + (pCity.getName() if pCity else "")
         elif base_key == "UNITCITY":
             unit_part = replacements.get("^ut^", "")
             city_part = pCity.getName() if pCity else ""
             return base_key + unit_part + city_part
+<<<<<<< Updated upstream
         elif base_key == "DOMAIN" and "^dm^" in replacements:
             return base_key + replacements.get("^dm^", "")
+=======
+        elif base_key == "DOMAIN":
+            domain_part = replacements.get("^dm^")
+            if not domain_part and pUnit:
+                domain_part = GC.getDomainInfo(pUnit.getDomainType()).getType()  # e.g., DOMAIN_LAND
+            return base_key + (domain_part or "")
+>>>>>>> Stashed changes
 
         return base_key
 
@@ -288,10 +323,20 @@ class UnitReName(object):
 
     def _getNumberFormat(self, conv, searchStr):
         """Get number format from convention"""
+<<<<<<< Updated upstream
         ziStart = conv.find("[", conv.find(searchStr))
         if ziStart == -1:
             return "s"
         return conv[ziStart + 1]  # Memory optimization: just get single char
+=======
+        base = conv.find(searchStr)
+        if base == -1:
+            return "s"
+        ziStart = conv.find("[", base)
+        if ziStart == -1:
+            return "s"
+        return conv[ziStart + 1:ziStart + 2]
+>>>>>>> Stashed changes
 
     def _getCountCode(self, conv, searchStr):
         """Get count code from convention"""
@@ -300,6 +345,12 @@ class UnitReName(object):
             return ""
 
         ziEnd = conv.find("^", ziStart + 1)
+<<<<<<< Updated upstream
+=======
+        if ziEnd == -1:
+            # Code at end-of-string; treat EoS as terminator
+            return conv[ziStart:]
+>>>>>>> Stashed changes
         return conv[ziStart:ziEnd + 1]
 
     def _swapCountCode(self, conv, searchStr, iCnt):

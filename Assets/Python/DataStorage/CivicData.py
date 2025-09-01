@@ -27,8 +27,12 @@ def initCivicData():
     """
     global _GC, _getNumCivicOptionInfos, _getNumCivicInfos, _getCivicInfo, civicLists
 
+<<<<<<< Updated upstream
     print
     "CivicData.initCivicData"
+=======
+    print "CivicData.initCivicData"
+>>>>>>> Stashed changes
 
     # Cache global context once
     _GC = CyGlobalContext()

@@ -161,7 +161,11 @@ class CvGameUtils:
             szType = _getBuildInfo(iBuild).getType()
             # Use string slicing instead of startswith for Python 2.4
             if szType[:12] == _BUILD_BONUS_PREFIX:
+<<<<<<< Updated upstream
                 iBonus = _getInfoTypeForString(szType[6:])
+=======
+                iBonus = _getInfoTypeForString(szType[12:])
+>>>>>>> Stashed changes
 
                 if (
                         iBonus > -1
@@ -178,10 +182,15 @@ class CvGameUtils:
     def cannotMaintain(self, argsList):
         CyCity, iProcess = argsList
         if not CyCity:
+<<<<<<< Updated upstream
             print
             "CyCity == None"
             print
             "CyCity, iProcess", argsList
+=======
+            print "CyCity == None"
+            print "CyCity, iProcess", argsList
+>>>>>>> Stashed changes
             return False
 
         TYPE = _getProcessInfo(iProcess).getType()
@@ -244,7 +253,11 @@ class CvGameUtils:
         iMax = _getMaxPopulation()
         if fTurnRatio:
             if iInitial:
+<<<<<<< Updated upstream
                 iMax = iInitial * (iMax / iInitial) ** fTurnRatio
+=======
+                iMax = iInitial * (iMax / float(iInitial)) ** fTurnRatio
+>>>>>>> Stashed changes
             else:
                 iMax = iInitial + fTurnRatio * (iMax - iInitial)
 
@@ -260,7 +273,11 @@ class CvGameUtils:
         iMax = _getMaxLand()
         if fTurnRatio:
             if iInitial:
+<<<<<<< Updated upstream
                 iMax = iInitial * (iMax / iInitial) ** fTurnRatio
+=======
+                iMax = iInitial * (iMax / float(iInitial)) ** fTurnRatio
+>>>>>>> Stashed changes
             else:
                 iMax = iInitial + fTurnRatio * (iMax - iInitial)
 
@@ -276,7 +293,11 @@ class CvGameUtils:
         iMax = _getMaxTech()
         if fTurnRatio:
             if iInitial:
+<<<<<<< Updated upstream
                 iMax = iInitial * (iMax / iInitial) ** fTurnRatio
+=======
+                iMax = iInitial * (iMax / float(iInitial)) ** fTurnRatio
+>>>>>>> Stashed changes
             else:
                 iMax = iInitial + fTurnRatio * (iMax - iInitial)
 

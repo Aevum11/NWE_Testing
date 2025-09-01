@@ -242,8 +242,12 @@ def changedHideAutoPromote(option, value):
 
 def setXMLOptionsfromIniFile():
     """Optimized initialization of automated settings"""
+<<<<<<< Updated upstream
     print
     "Initializing Automated Settings"
+=======
+    print "Initializing Automated Settings"
+>>>>>>> Stashed changes
 
     # Pre-cache BugOptions access to avoid repeated method calls
     automatedOptions = BugOptions.getOptions(_AUTOMATED_SETTINGS).options

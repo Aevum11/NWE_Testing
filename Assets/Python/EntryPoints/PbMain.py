@@ -1,175 +1,284 @@
 ## Sid Meier's Civilization 4
 ## Copyright Firaxis Games 2005
 #
-# Sample PitBoss window/app framework
+# Sample PitBoss window/app framework - Memory Optimized Version
 # Mustafa Thamer 2-15-05
+# Memory optimization applied for 32-bit Python 2.4 compatibility
 #
-from CvPythonExtensions import *
+from CvPythonExtensions import CyTranslator
 import PbWizard
 import PbAdmin
+# Lazy import for sendEmail function only
+import sys
 
+# Pre-cache frequently used objects to reduce repeated lookups
 localText = CyTranslator()
+# Single app reference to minimize global namespace pollution
 app = None
-bAdmin = False
+# Use integer instead of boolean for memory efficiency in 32-bit
+bAdmin = 0
+
+# Pre-intern frequently used strings to save memory
+_SMTP_HOST_EMPTY = intern('host or address empty')
+_SMTP_SENDING = intern('sending e-mail')
+_SMTP_TO = intern('To: %s')
+_SMTP_FROM = intern('From: %s')
+_SMTP_SERVER = intern('Server: %s')
+_SMTP_LOGIN = intern('Login: %s')
+_SMTP_NO_AUTH = intern('Not using authentication')
+
 
 #
 # entry point function
 #
 def create():
-	global app
-	app = PbWizard.StartupIFace(0)
+    global app
+    # Direct assignment without intermediate variables
+    app = PbWizard.StartupIFace(0)
+
 
 #
 # entry point function
 #
 def run():
-	global app
-	app.startWizard()
+    global app
+    # Ensure app exists before calling
+    if app:
+        app.startWizard()
+
 
 #
-# entry point function
+# entry point function - optimized to reduce repeated object creation
 #
 def update():
-	global bAdmin
-	global app
+    global bAdmin, app
 
-	if (not bAdmin):
-		app = PbAdmin.AdminIFace(0)
-		bAdmin = True
+    # Use integer comparison (more efficient in 32-bit)
+    if not bAdmin:
+        # Clean up old app reference before creating new one
+        if app:
+            del app
+        app = PbAdmin.AdminIFace(0)
+        bAdmin = 1
 
-	app.update()
+    if app:
+        app.update()
+
 
 #
-# entry point functions
+# Optimized entry point functions with direct parameter access
+# Avoiding unnecessary list unpacking overhead
 #
 def patchAvailable(argsList):
-	global app
-	patchName = argsList[0]
-	patchUrl = argsList[1]
-	app.patchAvailable(patchName, patchUrl)
+    global app
+    if app:
+        # Direct indexing without intermediate variables
+        app.patchAvailable(argsList[0], argsList[1])
+
 
 def patchProgress(argsList):
-	global app
-	bytesRecvd = argsList[0]
-	bytesTotal = argsList[1]
-	app.patchProgress(bytesRecvd, bytesTotal)
+    global app
+    if app:
+        # Direct indexing without intermediate variables
+        app.patchProgress(argsList[0], argsList[1])
+
 
 def patchDownloadComplete(argsList):
-	global app
-	bSuccess = argsList[0]
-	app.patchDownloadComplete(bSuccess)
+    global app
+    if app:
+        app.patchDownloadComplete(argsList[0])
+
 
 def appUpToDate():
-	app.upToDate()
+    global app
+    if app:
+        app.upToDate()
+
 
 def refreshRow(argsList):
-	global app
-	rowNum = argsList[0]
-	app.refreshRow(rowNum)
+    global app
+    if app:
+        app.refreshRow(argsList[0])
+
 
 def refreshCustomMapOptions(argsList):
-	global app
-	mapName = argsList[0]
-	app.refreshCustomMapOptions(mapName)
+    global app
+    if app:
+        app.refreshCustomMapOptions(argsList[0])
+
 
 def refreshAdvancedStartPoints(argsList):
-	global app
-	iPoints = argsList[0]
-	app.refreshAdvancedStartPoints(iPoints)
+    global app
+    if app:
+        app.refreshAdvancedStartPoints(argsList[0])
+
 
 def getMessageOfTheDay():
-	global app
-	return app.getMotD()
+    global app
+    if app:
+        return app.getMotD()
+    return None
+
 
 def addChatMessage(argsList):
-	global app
-	szMessage = argsList[0]
-	app.addChatMessage(szMessage)
+    global app
+    if app:
+        app.addChatMessage(argsList[0])
+
 
 def displayMessageBox(argsList):
-	global app
-	szTitle = argsList[0]
-	szDesc = argsList[1]
-	app.displayMessageBox(szTitle, szDesc)
+    global app
+    if app:
+        app.displayMessageBox(argsList[0], argsList[1])
+
 
 def sendEmail(argsList):
-	import smtplib, MimeWriter, base64, StringIO
+    # Lazy imports - only load when function is actually called
+    # This saves memory when email functionality is not used
+    import smtplib
 
-	szAddr = argsList[0]
-	szHost = argsList[1]
-	szLogin = argsList[2]
-	szPassword = argsList[3]
-	szGameName = argsList[4]
-	bUseTimer = argsList[5]
-	iTimeLeft = argsList[6]
-	szFrom = argsList[7]
-	szYear = argsList[8]
+    # Direct parameter extraction without intermediate variables
+    szAddr = argsList[0]
+    szHost = argsList[1]
 
-	if len(szAddr) == 0 or len(szHost) == 0:
-		print 'host or address empty'
-		return 1
+    # Early return to avoid unnecessary processing
+    if not szAddr or not szHost:
+        print
+        _SMTP_HOST_EMPTY
+        return 1
 
-	print "sending e-mail"
-	print "To: %s" % (szAddr, )
-	print "From: %s" % (szFrom, )
-	print "Server: %s" % (szHost, )
-	if len(szLogin) > 0:
-		print "Login: %s" % (szLogin, )
-	else:
-		print "Not using authentication"
+    # Extract remaining parameters only if needed
+    szLogin = argsList[2]
+    szPassword = argsList[3]
+    szGameName = argsList[4]
+    bUseTimer = argsList[5]
+    iTimeLeft = argsList[6]
+    szFrom = argsList[7]
+    szYear = argsList[8]
 
-	message = StringIO.StringIO()
-	writer = MimeWriter.MimeWriter(message)
+    # Print statements using pre-interned strings
+    print
+    _SMTP_SENDING
+    print
+    _SMTP_TO % (szAddr,)
+    print
+    _SMTP_FROM % (szFrom,)
+    print
+    _SMTP_SERVER % (szHost,)
+    if szLogin:
+        print
+        _SMTP_LOGIN % (szLogin,)
+    else:
+        print
+        _SMTP_NO_AUTH
 
-	writer.addheader('To', szAddr)
-	writer.addheader('From', szFrom)
-	writer.addheader('Subject', localText.getText("TXT_KEY_PITBOSS_EMAIL_SUBJECT", (szGameName, szYear)))
-	writer.addheader('MIME-Version', '1.0')
+    # Lazy import of email modules only when needed
+    import MimeWriter, StringIO
 
-	szBody = localText.getText("TXT_KEY_PITBOSS_EMAIL_BODY", (szGameName,))
-	if (bUseTimer):
-		szBody += u"\n"
-		szBody += localText.getText("TXT_KEY_PITBOSS_EMAIL_TIMER", (iTimeLeft,))
+    # Create message buffer
+    message = StringIO.StringIO()
 
-	body = writer.startbody('text/plain')
-	body.write(szBody)
+    try:
+        writer = MimeWriter.MimeWriter(message)
 
-	# send the mail
-	try:
-		smtp = smtplib.SMTP(szHost)
-		if len(szLogin) > 0:
-			smtp.login(szLogin, szPassword)
-		smtp.sendmail(szFrom, szAddr, message.getvalue())
-		smtp.quit()
-	except smtplib.SMTPAuthenticationError, e:
-		print "Authentication Error: The server didn't accept the username/password combination provided."
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPHeloError, e:
-		print "The server refused our HELO reply."
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPConnectError, e:
-		print "Error establishing connection."
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPDataError, e:
-		print "The SMTP server didn't accept the data."
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPRecipientsRefused, e:
-		print "All recipient addresses refused."
-		return 1
-	except smtplib.SMTPSenderRefused, e:
-		print "Sender address refused."
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPResponseException, e:
-		print "Error %d: %s" % (e.smtp_code, e.smtp_error)
-		return 1
-	except smtplib.SMTPServerDisconnected:
-		print "Not connected to any SMTP server"
-		return 1
-	except:
-		return 1
-	return 0
+        # Add headers directly without intermediate variables
+        writer.addheader('To', szAddr)
+        writer.addheader('From', szFrom)
+        writer.addheader('Subject', localText.getText("TXT_KEY_PITBOSS_EMAIL_SUBJECT", (szGameName, szYear)))
+        writer.addheader('MIME-Version', '1.0')
+
+        # Build body efficiently
+        szBody = localText.getText("TXT_KEY_PITBOSS_EMAIL_BODY", (szGameName,))
+        if bUseTimer:
+            # Use string concatenation only when necessary
+            szBody = szBody + u"\n" + localText.getText("TXT_KEY_PITBOSS_EMAIL_TIMER", (iTimeLeft,))
+
+        # Write body
+        body = writer.startbody('text/plain')
+        body.write(szBody)
+
+        # Clean up writer reference
+        del writer
+
+        # Get message value once
+        message_value = message.getvalue()
+
+        # Clean up StringIO immediately after getting value
+        message.close()
+        del message
+
+        # Send the mail
+        smtp = None
+        try:
+            smtp = smtplib.SMTP(szHost)
+            if szLogin:
+                smtp.login(szLogin, szPassword)
+            smtp.sendmail(szFrom, szAddr, message_value)
+            return 0
+        finally:
+            # Ensure SMTP connection is always closed
+            if smtp:
+                try:
+                    smtp.quit()
+                except:
+                    pass
+                del smtp
+            # Clean up message value
+            del message_value
+
+    except smtplib.SMTPAuthenticationError, e:
+        _handle_smtp_error("Authentication Error: The server didn't accept the username/password combination provided.",
+                           e)
+        return 1
+    except smtplib.SMTPHeloError, e:
+        _handle_smtp_error("The server refused our HELO reply.", e)
+        return 1
+    except smtplib.SMTPConnectError, e:
+        _handle_smtp_error("Error establishing connection.", e)
+        return 1
+    except smtplib.SMTPDataError, e:
+        _handle_smtp_error("The SMTP server didn't accept the data.", e)
+        return 1
+    except smtplib.SMTPRecipientsRefused:
+        print
+        "All recipient addresses refused."
+        return 1
+    except smtplib.SMTPSenderRefused, e:
+        _handle_smtp_error("Sender address refused.", e)
+        return 1
+    except smtplib.SMTPResponseException, e:
+        _handle_smtp_error("", e)
+        return 1
+    except smtplib.SMTPServerDisconnected:
+        print
+        "Not connected to any SMTP server"
+        return 1
+    except:
+        return 1
+
+
+# Helper function to reduce code duplication in error handling
+# This reduces memory usage by avoiding repeated string formatting
+def _handle_smtp_error(msg, error):
+    """Handle SMTP errors efficiently"""
+    if msg:
+        print
+        msg
+    # Check if error has required attributes before accessing
+    if hasattr(error, 'smtp_code') and hasattr(error, 'smtp_error'):
+        print
+        "Error %d: %s" % (error.smtp_code, error.smtp_error)
+
+# Memory optimization notes applied:
+# 1. Lazy imports in sendEmail to avoid loading modules until needed
+# 2. Pre-interned frequently used strings to reduce memory fragmentation
+# 3. Early returns to avoid unnecessary processing
+# 4. Explicit cleanup with del statements for large objects
+# 5. Use of integer instead of boolean for bAdmin (more efficient in 32-bit)
+# 6. Added null checks before app method calls to prevent errors
+# 7. Direct parameter indexing without creating intermediate variables
+# 8. Proper resource cleanup in finally blocks
+# 9. Reduced code duplication with helper function for error handling
+# 10. Closed and deleted StringIO objects immediately after use
+# 11. Ensured SMTP connections are always properly closed
+# 12. Removed unnecessary variable assignments in simple forwarding functions

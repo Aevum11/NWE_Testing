@@ -22,7 +22,12 @@ class OutOfRangeError(RomanError):
 
 # Pre-create error message to avoid repeated string creation
 # This saves memory in cases where the error is raised multiple times
+<<<<<<< Updated upstream
 _OUT_OF_RANGE_MSG = "number out of range (must be 1..9999)"
+=======
+_MAX_ROMAN_VALUE = 9999
+_OUT_OF_RANGE_MSG = "number out of range (must be 1..%d)" % _MAX_ROMAN_VALUE
+>>>>>>> Stashed changes
 
 # Using tuple (immutable) instead of list - already optimal in original
 # Tuples use less memory than lists for fixed collections
@@ -51,7 +56,11 @@ def toRoman(Number):
 
     # Optimized range check - single comparison is slightly faster
     # and uses less memory than compound comparison
+<<<<<<< Updated upstream
     if Number <= 0 or Number >= 10000:
+=======
+    if Number <= 0 or Number > _MAX_ROMAN_VALUE:
+>>>>>>> Stashed changes
         raise OutOfRangeError, _OUT_OF_RANGE_MSG
 
     # Use list append + join instead of string concatenation

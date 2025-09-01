@@ -1787,6 +1787,14 @@ class CvSignDesc:
 				if parser.findTokenValue(toks, "EndSign") != -1:
 					return True
 
+<<<<<<< Updated upstream
+=======
+
+	def apply(self):
+		CyEngine().addSign(GC.getMap().plot(self.iX, self.iY), self.playerType, self.szCaption)
+		print "sign added at %dx%dy for player %d with caption: '%s'" %(self.iX, self.iY, self.playerType, self.szCaption)
+
+>>>>>>> Stashed changes
 # handles saving/loading a worldbuilder description file
 class CvWBDesc:
 

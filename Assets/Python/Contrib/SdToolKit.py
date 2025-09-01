@@ -19,7 +19,11 @@ _GLOBAL_KEY = 'Global'
 _GAME_KEY = 'Game'
 
 # Memory optimization: Cache empty dictionary to avoid repeated creation
+<<<<<<< Updated upstream
 _EMPTY_DICT = {}
+=======
+_EMPTY_DICT = {}  # keep for internals if needed, but don't return it
+>>>>>>> Stashed changes
 
 
 # -=-=-=-=-=-=-=-= SD-DATA-STORAGE =-=-=-=-=-=-=-=-=-#
@@ -140,7 +144,12 @@ def _manage_cache(key, value):
 
     if key in _cache:
         # Move to end (most recently used)
+<<<<<<< Updated upstream
         _cache_order.remove(key)
+=======
+        if key in _cache_order:
+            _cache_order.remove(key)
+>>>>>>> Stashed changes
         _cache_order.append(key)
     else:
         # Add new entry
@@ -157,7 +166,12 @@ def _get_from_cache(key):
     """Get from cache and update LRU order"""
     if key in _cache:
         # Move to end (most recently used)
+<<<<<<< Updated upstream
         _cache_order.remove(key)
+=======
+        if key in _cache_order:
+            _cache_order.remove(key)
+>>>>>>> Stashed changes
         _cache_order.append(key)
         return _cache[key]
     return None
@@ -166,7 +180,11 @@ def _get_from_cache(key):
 # Loads previously initialized data from the central reservoir. If no data is found, init it.
 def sdLoad(object):
     if not object:
+<<<<<<< Updated upstream
         return _EMPTY_DICT
+=======
+        return {}
+>>>>>>> Stashed changes
 
     # Memory optimization: Check cache first
     obj_id = id(object)
@@ -176,7 +194,11 @@ def sdLoad(object):
 
     temp = object.getScriptData()
     if not temp:
+<<<<<<< Updated upstream
         return _EMPTY_DICT
+=======
+        return {}
+>>>>>>> Stashed changes
 
     # Only deserialize if we have data
     cyTable = cPickle.loads(temp)
@@ -192,7 +214,11 @@ def sdObjectGetDict(ModID, object):
     cyTable = sdLoad(object)
     if ModID in cyTable:
         return cyTable[ModID]
+<<<<<<< Updated upstream
     return _EMPTY_DICT
+=======
+    return {}
+>>>>>>> Stashed changes
 
 
 # Loads previously initialized data from the central reservoir. If no data is found, init it.

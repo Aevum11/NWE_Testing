@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ## TechWindowWide
 ##
 ## Originally by SirRethcir: Techanzeige hinzugefÃ¼gt
@@ -227,9 +228,16 @@ class CvTechSplashScreen:
         screen.setStyle("TechSplashSpecialPanel", _STR_PANEL_STYLE_BLACK)
 
         # Allows Panels - reuse panel creation logic
+<<<<<<< Updated upstream
         panels = [
             ("SIR", 62, self.Y_ALLOWS_PANELSIR, w_special, self.H_ALLOWS_PANELSIR),
             (self.getNextWidgetName(), x_allows, self.Y_ALLOWS_PANEL, w_allows, self.H_ALLOWS_PANEL),
+=======
+        self.UNITS_PANEL = self.getNextWidgetName()
+        panels = [
+            ("SIR", 62, self.Y_ALLOWS_PANELSIR, w_special, self.H_ALLOWS_PANELSIR),
+            (self.UNITS_PANEL, x_allows, self.Y_ALLOWS_PANEL, w_allows, self.H_ALLOWS_PANEL),
+>>>>>>> Stashed changes
             ("SIR2", x_allows, self.Y_ALLOWS_PANEL2, w_allows, self.H_ALLOWS_PANEL),
             ("SIR3", x_allows, self.Y_ALLOWS_PANEL3, w_allows, self.H_ALLOWS_PANEL)
         ]
@@ -319,7 +327,11 @@ class CvTechSplashScreen:
         screen.setText("UnitsTitle", _STR_EMPTY, szTitle, 1,
                        545, title_y_units, 0, FontTypes.TITLE_FONT, self.WIDGET_GENERAL, -1, -1)
 
+<<<<<<< Updated upstream
         panelName = "TechSplashScreenWidget0"  # Pre-calculated first widget name
+=======
+        panelName = self.UNITS_PANEL
+>>>>>>> Stashed changes
         for iUnit in xrange(GC.getNumUnitInfos()):
             if isTechRequiredForUnit(iTech, iUnit):
                 attachButton(panelName, _STR_EMPTY, getButton(GC.getUnitInfo(iUnit)),

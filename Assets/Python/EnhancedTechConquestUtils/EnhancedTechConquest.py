@@ -1,200 +1,296 @@
 from CvPythonExtensions import *
 import CvUtil
 
-GC = CyGlobalContext()
-GAME = GC.getGame()
-TRNSLTR = CyTranslator()
+# Removed global references to reduce memory overhead
+
+# Configuration cache to avoid repeated parsing
+_config_cache = None
+
 
 def loadConfigurationData():
-	global g_bCheckPrereq
-	global g_iBasePercentOffset
-	global g_iPopPercent
-	global g_iTechBehindPercent
-	global g_iFinalModifier
+    """Load configuration with memory optimization and caching"""
+    global _config_cache
 
-	import SystemPaths
-	path = SystemPaths.modDir + "\\Assets\\Caveman2Cosmos Config.ini"
-	import ConfigParser
-	Config = ConfigParser.ConfigParser()
-	Config.read(path)
+    # Return cached config if already loaded
+    if _config_cache is not None:
+        return _config_cache
 
-	if Config:
-		# If this is set to False, then you can get beakers towards techs you don't have the prerequisites for.
-		g_bCheckPrereq = Config.get("Enhanced Tech Conquest", "Check Prereq")
-		if g_bCheckPrereq in ("False", "false", "0"):
-			g_bCheckPrereq = False
-		else:
-			g_bCheckPrereq = True
+    # Use local variables to reduce memory footprint
+    import SystemPaths
+    path = SystemPaths.modDir + "\\Assets\\Caveman2Cosmos Config.ini"
 
-		# Base percentage is an offset value that does not care about how many techs ahead or how big the city in question is.
-		g_iBasePercentOffset = Config.get("Enhanced Tech Conquest", "Base Percent Offset")
-		if g_iBasePercentOffset.isdigit():
-			g_iBasePercentOffset = int(g_iBasePercentOffset)
-		else:
-			g_iBasePercentOffset = 0
+    import ConfigParser
+    Config = ConfigParser.ConfigParser()
+    Config.read(path)
 
-		# Significance of city size on the final outcome - Range(1, 100)
-		g_iPopPercent = Config.get("Enhanced Tech Conquest", "Population Percent")
-		if g_iPopPercent.isdigit():
-			g_iPopPercent = int(g_iPopPercent)
-		else:
-			g_iPopPercent = 15
+    # Initialize with defaults to avoid repeated checks
+    config_dict = {
+        'check_prereq': True,
+        'base_offset': 0,
+        'pop_percent': 15,
+        'tech_behind_percent': 300,
+        'final_modifier': 100
+    }
 
-		# Significance of the number of techs you are behind the player you conquer the city from on the final outcome.
-		g_iTechBehindPercent = Config.get("Enhanced Tech Conquest", "Techs Behind Percent")
-		if g_iTechBehindPercent.isdigit():
-			g_iTechBehindPercent = int(g_iTechBehindPercent)
-		else:
-			g_iTechBehindPercent = 300
+    if Config:
+        # Process configuration more efficiently
+        try:
+            # Check Prereq
+            val = Config.get("Enhanced Tech Conquest", "Check Prereq")
+            config_dict['check_prereq'] = val not in ("False", "false", "0")
 
-		# Directly affects the final amount of beakers one get calculated from the two above factors.
-		g_iFinalModifier = Config.get("Enhanced Tech Conquest", "Final Modifier")
-		if g_iFinalModifier.isdigit():
-			g_iFinalModifier = int(g_iFinalModifier)
-		else:
-			g_iFinalModifier = 100
+            # Base Percent Offset
+            val = Config.get("Enhanced Tech Conquest", "Base Percent Offset")
+            if val.isdigit():
+                config_dict['base_offset'] = int(val)
 
-	sprint  = "Enhanced Tech Conquest:\n"
-	sprint += "\tTechnology Transfer Ignore Prereq = %s\n" %str(g_bCheckPrereq)
-	sprint += "\tBase Technology Transfer Percent. = %d\n" %g_iBasePercentOffset
-	sprint += "\tPercentage Per City Population... = %d\n" %g_iPopPercent
-	sprint += "\tPercentage Per Tech Behind... = %d\n" %g_iTechBehindPercent
-	sprint += "\tFinal Modifier... = %d" %g_iFinalModifier
-	print sprint
+            # Population Percent
+            val = Config.get("Enhanced Tech Conquest", "Population Percent")
+            if val.isdigit():
+                config_dict['pop_percent'] = int(val)
+
+            # Techs Behind Percent
+            val = Config.get("Enhanced Tech Conquest", "Techs Behind Percent")
+            if val.isdigit():
+                config_dict['tech_behind_percent'] = int(val)
+
+            # Final Modifier
+            val = Config.get("Enhanced Tech Conquest", "Final Modifier")
+            if val.isdigit():
+                config_dict['final_modifier'] = int(val)
+        except:
+            pass  # Use defaults on any error
+
+    # Build output string more efficiently using list join
+    output_parts = [
+        "Enhanced Tech Conquest:",
+        "\tTechnology Transfer Ignore Prereq = %s" % str(config_dict['check_prereq']),
+        "\tBase Technology Transfer Percent. = %d" % config_dict['base_offset'],
+        "\tPercentage Per City Population... = %d" % config_dict['pop_percent'],
+        "\tPercentage Per Tech Behind... = %d" % config_dict['tech_behind_percent'],
+        "\tFinal Modifier... = %d" % config_dict['final_modifier']
+    ]
+    print
+    "\n".join(output_parts)
+
+    # Cache the configuration
+    _config_cache = config_dict
+    return config_dict
+
 
 class EnhancedTechConquest:
+    """Enhanced Tech Conquest with memory optimizations"""
 
-	def onCityAcquired(self, argsList):
-		#iOwnerOld, iOwnerNew, city, bConquest, bTrade, bAutoRaze = argsList
-		# if not bConquest
-		if not argsList[3]: return
+    # Use __slots__ to reduce memory overhead for instances
+    __slots__ = ()
 
-		fBasePercent = g_iBasePercentOffset
-		if fBasePercent < 1 and g_iTechBehindPercent < 1: return
+    def onCityAcquired(self, argsList):
+        """Handle city acquisition with optimized memory usage"""
+        # Early exit if not conquest
+        if not argsList[3]:
+            return
 
-		iOwnerNew = argsList[1]
-		CyPlayerN = GC.getPlayer(iOwnerNew)
-		if CyPlayerN.isNPC(): return
+        # Load configuration (cached after first call)
+        config = loadConfigurationData()
 
-		iPopPercent = g_iPopPercent
-		if iPopPercent < 0:
-			iPopPercent = 0
+        # Early exit check
+        base_percent = config['base_offset']
+        if base_percent < 1 and config['tech_behind_percent'] < 1:
+            return
 
-		CyPlayerO = GC.getPlayer(argsList[0]) # old owner
-		CyTeamO = GC.getTeam(CyPlayerO.getTeam())
-		CyTeamN = GC.getTeam(CyPlayerN.getTeam())
+        # Get game context objects only when needed
+        gc = CyGlobalContext()
 
-		bCheckPrereq = g_bCheckPrereq
-		aList0 = []
-		aList1 = []
-		iTechsBehind = 0
-		for iTech in range(GC.getNumTechInfos()):
-			# Continue if the conquering team does have the tech
-			# Continue if the old team doesn't have the tech
-			# Continue if the new team can't ever get the tech
-			if (CyTeamN.isHasTech(iTech)
-			or not CyTeamO.isHasTech(iTech)
-			or not CyPlayerN.canResearch(iTech, False, False)):
-				continue
-			iTechsBehind += 1
-			# Continue if the conquerer cannot research the technology
-			bImmediateTech = CyPlayerN.canResearch(iTech, True, True);
-			if bCheckPrereq and not bImmediateTech:
-				continue
-			# Append the technology to the possible technology list
-			iCost = CyTeamN.getResearchCost(iTech)
-			iRemaining = iCost - CyTeamN.getResearchProgress(iTech)
-			# Append the technology to the possible technology list
-			if bImmediateTech:
-				aList0.append((iTech, iCost, iRemaining))
-			elif iRemaining > iCost *2/3:
-				aList1.append((iTech, iCost, iRemaining / 3))
-			elif iRemaining > iCost / 2:
-				aList1.append((iTech, iCost, iRemaining / 2))
-			elif iRemaining > iCost / 3:
-				aList1.append((iTech, iCost, iRemaining*2/3))
-			else:
-				aList1.append((iTech, iCost, iRemaining - 1))
+        iOwnerNew = argsList[1]
+        player_new = gc.getPlayer(iOwnerNew)
 
-		if not aList0: return
+        # Early exit for NPC
+        if player_new.isNPC():
+            return
 
-		fBasePercent += iTechsBehind * g_iTechBehindPercent / 100.0
-		if fBasePercent < 1: return
+        # Cache frequently used values
+        pop_percent = config['pop_percent']
+        if pop_percent < 0:
+            pop_percent = 0
 
-		city = argsList[2]
-		charBeaker = GC.getCommerceInfo(CommerceTypes.COMMERCE_RESEARCH).getChar()
-		if iPopPercent:
-			iPopulation = city.getPopulation() + 1
-			fForce = iPopPercent * (1 + city.isCapital()) * iPopulation / (100.0 * (CyPlayerO.getTotalPopulation() + iPopulation))
+        # Get player and team objects
+        player_old = gc.getPlayer(argsList[0])
+        team_old = gc.getTeam(player_old.getTeam())
+        team_new = gc.getTeam(player_new.getTeam())
 
-		col = ColorTypes(GC.getInfoTypeForString("COLOR_GREEN"))
-		bHuman = CyPlayerN.isHuman()
-		iCount = 0
-		iLen0 = len(aList0)
-		iLen1 = len(aList1)
-		iTechs = iLen0 + iLen1
-		if iTechs > 1:
-			fBase = iTechs / 4.0
-			fAttenuation = 100.0 / fBase
+        # Pre-calculate values once
+        check_prereq = config['check_prereq']
+        tech_behind_percent = config['tech_behind_percent']
+        final_modifier = config['final_modifier']
 
-		aTxtList = []
-		bGotTech = False
-		szTxt = ""
+        # Use more memory-efficient data structure
+        # Instead of two lists, use a single list with tuples including priority
+        tech_list = []
+        techs_behind = 0
 
-		while iLen0 or iLen1:
+        # Get the total number of techs once
+        num_techs = gc.getNumTechInfos()
 
-			if iLen0:
-				iTech, iCost, iRemaining = aList0.pop(GAME.getSorenRandNum(iLen0, "random"))
-				iLen0 -= 1
-				bFirstList = True
-			else:
-				bFirstList = False
-				iTech, iCost, iRemaining = aList1.pop(GAME.getSorenRandNum(iLen1, "random"))
-				iLen1 -= 1
-				if bGotTech and CyPlayerN.canResearch(iTech, True, True):
-					iRemaining = iCost - CyTeamN.getResearchProgress(iTech)
-				else: iCost = iRemaining
+        # Single pass through techs
+        for iTech in xrange(num_techs):
+            # Skip if conditions not met
+            if (team_new.isHasTech(iTech) or
+                    not team_old.isHasTech(iTech) or
+                    not player_new.canResearch(iTech, False, False)):
+                continue
 
-			# Get the total number of technology points that will be transfered to the new city owner
-			if iPopPercent:
-				fPercent = fBasePercent + fBasePercent * fForce
-				if fPercent <= 0: continue
-			else:
-				fPercent = fBasePercent
-				if fPercent <= 0: return
+            techs_behind += 1
 
-			if iTechs > 1:
-				fBeakers = iCost * fPercent / (20*(iTechs-1) + fAttenuation * (iCount + fBase))
-			else: fBeakers = iCost * fPercent / 100
+            # Check if can research immediately
+            immediate = player_new.canResearch(iTech, True, True)
 
-			if g_iFinalModifier > 0:
-				fBeakers = fBeakers * (100 + g_iFinalModifier) / 100
-			elif g_iFinalModifier < 0:
-				fBeakers = fBeakers * 100 / (100 - g_iFinalModifier)
+            if check_prereq and not immediate:
+                continue
 
-			iBeakers = int(fBeakers)
+            # Calculate values once
+            cost = team_new.getResearchCost(iTech)
+            remaining = cost - team_new.getResearchProgress(iTech)
 
-			if iBeakers < 1: continue
-			if iBeakers > iRemaining:
-				iBeakers = iRemaining
-				if bFirstList:
-					bGotTech = True
+            # Store as tuple with priority flag
+            if immediate:
+                tech_list.append((1, iTech, cost, remaining))
+            else:
+                # Calculate adjusted remaining once
+                if remaining > cost * 2 / 3:
+                    adjusted = remaining / 3
+                elif remaining > cost / 2:
+                    adjusted = remaining / 2
+                elif remaining > cost / 3:
+                    adjusted = remaining * 2 / 3
+                else:
+                    adjusted = remaining - 1
+                tech_list.append((0, iTech, cost, adjusted))
 
-			# Increase the research progress for the new city owner
-			CyTeamN.changeResearchProgress(iTech, iBeakers, iOwnerNew)
+        # Early exit if no techs
+        if not tech_list:
+            return
 
-			if bHuman:
-				szTxt += "\n\t* " + GC.getTechInfo(iTech).getDescription() + u" <-> %i%c" %(iBeakers, charBeaker)
+        # Calculate base percent with techs behind
+        base_percent += techs_behind * tech_behind_percent / 100.0
+        if base_percent < 1:
+            return
 
-			iCount += 1
+        # Get city and calculate population factor if needed
+        city = argsList[2]
 
-		if bHuman:
-			if iCount:
-				szTxt = TRNSLTR.getText("TXT_KEY_ENHANCED_TECH_CONQUEST_SUCESS", ()) % city.getName() + szTxt
-			else: szTxt = TRNSLTR.getText("TXT_KEY_ENHANCED_TECH_CONQUEST_FAIL", ()) % city.getName()
+        if pop_percent:
+            population = city.getPopulation() + 1
+            total_pop = player_old.getTotalPopulation() + population
+            is_capital = city.isCapital()
+            # Calculate force factor more efficiently
+            force = pop_percent * (1 + is_capital) * population / (100.0 * total_pop)
+        else:
+            force = 0
 
-			CvUtil.sendMessage(
-				szTxt, iOwnerNew, 20,
-				GC.getCivilizationInfo(CyPlayerO.getCivilizationType()).getButton(),
-				col, city.getX(), city.getY(), True, True
-			)
+        # Check if human player for messages
+        is_human = player_new.isHuman()
+
+        # Pre-calculate values for efficiency
+        num_techs = len(tech_list)
+
+        if num_techs > 1:
+            base_div = num_techs / 4.0
+            attenuation = 100.0 / base_div
+
+        # Process techs
+        count = 0
+        got_tech = False
+        message_parts = []  # More efficient than string concatenation
+
+        # Get game object for random
+        game = gc.getGame()
+
+        # Get commerce char once if needed
+        if is_human:
+            beaker_char = gc.getCommerceInfo(CommerceTypes.COMMERCE_RESEARCH).getChar()
+
+        # Process techs in random order
+        while tech_list:
+            # Get random index
+            idx = game.getSorenRandNum(len(tech_list), "random")
+
+            # Extract tech data and remove from list
+            priority, iTech, cost, remaining = tech_list.pop(idx)
+
+            # Update remaining if needed
+            if not priority and got_tech and player_new.canResearch(iTech, True, True):
+                remaining = cost - team_new.getResearchProgress(iTech)
+            elif not priority:
+                cost = remaining
+
+            # Calculate percent
+            if pop_percent:
+                percent = base_percent + base_percent * force
+                if percent <= 0:
+                    continue
+            else:
+                percent = base_percent
+                if percent <= 0:
+                    # Clean up before returning
+                    del tech_list
+                    return
+
+            # Calculate beakers
+            if num_techs > 1:
+                beakers_float = cost * percent / (20 * (num_techs - 1) + attenuation * (count + base_div))
+            else:
+                beakers_float = cost * percent / 100
+
+            # Apply final modifier
+            if final_modifier > 0:
+                beakers_float = beakers_float * (100 + final_modifier) / 100
+            elif final_modifier < 0:
+                beakers_float = beakers_float * 100 / (100 - final_modifier)
+
+            beakers = int(beakers_float)
+
+            if beakers < 1:
+                continue
+
+            if beakers > remaining:
+                beakers = remaining
+                if priority == 1:
+                    got_tech = True
+
+            # Apply research progress
+            team_new.changeResearchProgress(iTech, beakers, iOwnerNew)
+
+            # Build message if human
+            if is_human:
+                tech_desc = gc.getTechInfo(iTech).getDescription()
+                message_parts.append("\n\t* %s <-> %i%c" % (tech_desc, beakers, beaker_char))
+
+            count += 1
+
+        # Send message if human
+        if is_human:
+            translator = CyTranslator()
+
+            if count:
+                # Build message efficiently
+                base_msg = translator.getText("TXT_KEY_ENHANCED_TECH_CONQUEST_SUCESS", ()) % city.getName()
+                full_msg = base_msg + "".join(message_parts)
+            else:
+                full_msg = translator.getText("TXT_KEY_ENHANCED_TECH_CONQUEST_FAIL", ()) % city.getName()
+
+            # Get color once
+            color = ColorTypes(gc.getInfoTypeForString("COLOR_GREEN"))
+
+            # Get button
+            button = gc.getCivilizationInfo(player_old.getCivilizationType()).getButton()
+
+            # Send message
+            CvUtil.sendMessage(
+                full_msg, iOwnerNew, 20,
+                button,
+                color, city.getX(), city.getY(), True, True
+            )
+
+        # Explicit cleanup of local references
+        del tech_list
+        del message_parts

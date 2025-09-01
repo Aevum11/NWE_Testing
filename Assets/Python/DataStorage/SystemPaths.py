@@ -56,9 +56,14 @@ def init():
         try:
             # Direct encode without intermediate variable
             userDir = myDocuments.encode('utf-8')
+<<<<<<< Updated upstream
         except:
             print
             "Encoding error for 'My Documents' path"
+=======
+        except (UnicodeDecodeError, UnicodeEncodeError, AttributeError):
+            print "Encoding error for 'My Documents' path"
+>>>>>>> Stashed changes
             userDir = None
 
     # Get base directory - single encode operation
@@ -92,8 +97,12 @@ def init():
         "\tSP.userDir",
         "------------------------------END------------------------------------"
     ]
+<<<<<<< Updated upstream
     print
     "\n".join(output_parts)
+=======
+    print "\n".join(output_parts)
+>>>>>>> Stashed changes
 
     return userDir
 
@@ -106,8 +115,12 @@ def _getMyDocuments():
     - No nested try-except blocks
     """
     if not _HAS_WINREG:
+<<<<<<< Updated upstream
         print
         "Registry module not available"
+=======
+        print "Registry module not available"
+>>>>>>> Stashed changes
         return None
 
     # Try XP/2000 path first (most common)
@@ -120,8 +133,12 @@ def _getMyDocuments():
     if value:
         return value
 
+<<<<<<< Updated upstream
     print
     "Cannot find 'My Documents' folder registry key"
+=======
+    print "Cannot find 'My Documents' folder registry key"
+>>>>>>> Stashed changes
     return None
 
 
@@ -134,7 +151,11 @@ def _getRegValue(subkey_path):
     try:
         key = _OpenKey(_HKEY_CURRENT_USER, subkey_path)
         return _QueryValueEx(key, _REG_KEY_PERSONAL)[0]
+<<<<<<< Updated upstream
     except:
+=======
+    except (WindowsError, OSError, KeyError):
+>>>>>>> Stashed changes
         return None
 
 
@@ -145,8 +166,12 @@ def initUserSettingsDir():
     - Direct path building without intermediate strings
     """
     if not _isdir(userSettingsDir):
+<<<<<<< Updated upstream
         print
         "SystemPaths - initUserSettingsDir()\n\tUserSettings directory " + userSettingsDir + " not found, creating it."
+=======
+        print "SystemPaths - initUserSettingsDir()\n\tUserSettings directory " + userSettingsDir + " not found, creating it."
+>>>>>>> Stashed changes
         mkdir(userSettingsDir)
 
     # Create subdirectory with single string operation

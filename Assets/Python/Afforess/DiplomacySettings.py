@@ -210,8 +210,12 @@ def changedAdvancedDiplomacy(option, value):
 
 def setXMLOptionsfromIniFile():
     """Optimized initialization using pre-cached methods and batch operations"""
+<<<<<<< Updated upstream
     print
     "DiplomacySettings.setXMLOptionsfromIniFile"
+=======
+    print "DiplomacySettings.setXMLOptionsfromIniFile"
+>>>>>>> Stashed changes
 
     # Set options that depend on game options first
     # Use pre-cached method references for efficiency

@@ -36,6 +36,15 @@
 from CvPythonExtensions import *
 import CvUtil
 
+<<<<<<< Updated upstream
+=======
+# Python 2/3 compatibility
+try:
+    xrange
+except NameError:
+    xrange = range
+
+>>>>>>> Stashed changes
 # Pre-cache global context to avoid repeated calls
 GC = CyGlobalContext()
 GAME = GC.getGame()

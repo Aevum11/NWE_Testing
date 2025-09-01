@@ -46,6 +46,7 @@ def _getNaturalWonders():
         # Create singleton instance
         _naturalWonders = NaturalWonders.NaturalWonders()
 
+<<<<<<< Updated upstream
         # Pre-cache method references to avoid repeated attribute lookups
         # This saves memory by reducing the lookup chain overhead
         _checkReveal = _naturalWonders.checkReveal
@@ -56,6 +57,15 @@ def _getNaturalWonders():
             _placeWonderBuilding = _naturalWonders.placeWonderBuilding
         if hasattr(_naturalWonders, 'findNewCity'):
             _findNewCity = _naturalWonders.findNewCity
+=======
+        # (Re)hydrate caches if missing; supports late binding/monkey-patching.
+        if _checkReveal is None:
+            _checkReveal = _naturalWonders.checkReveal
+        if _placeWonderBuilding is None:
+            _placeWonderBuilding = getattr(_naturalWonders, 'placeWonderBuilding', None)
+        if _findNewCity is None:
+            _findNewCity = getattr(_naturalWonders, 'findNewCity', None)
+>>>>>>> Stashed changes
 
     return _naturalWonders
 
@@ -76,9 +86,12 @@ def onPlotRevealed(argsList):
     _checkReveal(pPlot, iTeam)
 
 
+<<<<<<< Updated upstream
 '''
 # These functions are commented out but optimized for when they are re-enabled
 
+=======
+>>>>>>> Stashed changes
 def onCityBuilt(argsList):
 	"""
 	Called when a city is built.
@@ -110,12 +123,19 @@ def onCityRazed(argsList):
 	# Use pre-cached method reference if available
 	if _findNewCity is not None:
 		_findNewCity(city)
+<<<<<<< Updated upstream
 '''
+=======
+>>>>>>> Stashed changes
 
 
 def cleanup():
     """
+<<<<<<< Updated upstream
     Optional cleanup function to free memory when module is no longer needed.
+=======
+    Cleanup function to free memory when module is no longer needed.
+>>>>>>> Stashed changes
     Useful for memory-constrained 32-bit environments.
     Can be called during game exit or major state changes.
     """

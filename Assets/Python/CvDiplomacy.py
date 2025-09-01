@@ -152,7 +152,11 @@ class CvDiplomacy:
     "Code used by Civ Diplomacy interface - memory optimized"
 
     # Use __slots__ to reduce memory overhead by ~100-200 bytes per instance
+<<<<<<< Updated upstream
     __slots__ = ('iLastResponseID', 'diploScreen', '_comment_handlers')
+=======
+    __slots__ = ('iLastResponseID', 'diploScreen', '_comment_handlers', '_lastAIComment')
+>>>>>>> Stashed changes
 
     def __init__(self):
         "constructor - set up class vars, AI and User strings"
@@ -160,6 +164,10 @@ class CvDiplomacy:
             print "Launching Diplomacy"
         self.iLastResponseID = -1
         self.diploScreen = CyDiplomacy()
+<<<<<<< Updated upstream
+=======
+        self._lastAIComment = None
+>>>>>>> Stashed changes
 
         # Pre-build handler dispatch dictionary for determineResponses
         # This replaces long if-elif chains with O(1) dictionary lookup
@@ -397,7 +405,11 @@ class CvDiplomacy:
         self.addUserComment(_USER_SOMETHING_ELSE)
 
         if CyPlayer and not GAME.isNetworkMultiPlayer():
+<<<<<<< Updated upstream
             eComment = self.iLastResponseID # Corrected line: use the instance variable
+=======
+            eComment = self._lastAIComment
+>>>>>>> Stashed changes
             if eComment in _AI_ASSUME_TYPES:
                 self.addUserComment(_USER_RESUME_TALKS)
             elif eComment in _AI_RESUME_TYPES:
@@ -427,6 +439,10 @@ class CvDiplomacy:
 
         self.diploScreen.setAIString(AIString, args)
         self.diploScreen.setAIComment(eComment)
+<<<<<<< Updated upstream
+=======
+        self._lastAIComment = eComment
+>>>>>>> Stashed changes
         self.determineResponses(eComment)
 
     def getDiplomacyComment(self, eComment):
@@ -485,11 +501,20 @@ class CvDiplomacy:
                     continue
 
             if self.isUsed(diploInfo.getDiplomacyPowerTypes, i, DiplomacyPowerTypes.NUM_DIPLOMACYPOWER_TYPES):
+<<<<<<< Updated upstream
                 if bUsInferior and not diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_STRONGER):
                     continue
                 elif bUsSuperior and not diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_WEAKER):
                     continue
                 elif diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_EQUAL):
+=======
+                bEqual = not bUsInferior and not bUsSuperior
+                if bUsInferior and not diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_STRONGER):
+                    continue
+                if bUsSuperior and not diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_WEAKER):
+                    continue
+                if bEqual and not diploInfo.getDiplomacyPowerTypes(i, DiplomacyPowerTypes.DIPLOMACYPOWER_EQUAL):
+>>>>>>> Stashed changes
                     continue
 
             # Passed all tests, extend responses list efficiently

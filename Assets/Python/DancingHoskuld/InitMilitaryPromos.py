@@ -117,7 +117,11 @@ def init():
     # Cache terrain types once
     _TERRAIN_TAIGA = _getInfoTypeForString('TERRAIN_TAIGA')
     _TERRAIN_TUNDRA = _getInfoTypeForString('TERRAIN_TUNDRA')
+<<<<<<< Updated upstream
     _TERRAIN_PERMAFROST = _getInfoTypeForString('TERRAIN_TUNDRA')  # Note: Same as tundra
+=======
+    _TERRAIN_PERMAFROST = _getInfoTypeForString('TERRAIN_PERMAFROST')
+>>>>>>> Stashed changes
     _TERRAIN_ICE = _getInfoTypeForString('TERRAIN_ICE')
     _TERRAIN_DESERT = GC.getTERRAIN_DESERT()
     _TERRAIN_DUNES = _getInfoTypeForString('TERRAIN_DUNES')
@@ -181,6 +185,12 @@ def onUnitBuilt(argsList):
     Apply militia promotions based on surrounding terrain.
     Memory optimized: Direct references, early exits, reduced variables.
     """
+<<<<<<< Updated upstream
+=======
+    # Ensure module initialized (in case init() wasn't called yet)
+    if _PROMOTION_GREEN_WARDEN == -1:
+        init()
+>>>>>>> Stashed changes
     city = argsList[0]
     unit = argsList[1]
 

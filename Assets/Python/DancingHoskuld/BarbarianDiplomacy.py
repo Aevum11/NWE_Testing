@@ -27,7 +27,11 @@ _debug = BugUtil.debug
 # Python 2.4 doesn't have conditional expressions, so we check at module init
 try:
     _GAMEOPTION_NO_GOODY_HUTS = GameOptionTypes.GAMEOPTION_MAP_NO_GOODY_HUTS
+<<<<<<< Updated upstream
 except:
+=======
+except (AttributeError, NameError):
+>>>>>>> Stashed changes
     _GAMEOPTION_NO_GOODY_HUTS = None
 
 # Pre-intern string constants - Python automatically interns these

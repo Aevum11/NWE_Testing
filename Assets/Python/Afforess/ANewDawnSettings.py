@@ -411,8 +411,12 @@ def changedInfrastructureIgnoresImprovements(option, value):
 
 
 def setXMLOptionsfromIniFile():
+<<<<<<< Updated upstream
     print
     "Initializing A New Dawn Settings"
+=======
+    print "Initializing A New Dawn Settings"
+>>>>>>> Stashed changes
 
     # Pre-cache option object for repeated access
     opt = ANewDawnOpt

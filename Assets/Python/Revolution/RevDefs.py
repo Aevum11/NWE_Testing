@@ -81,6 +81,7 @@ def initRevIdxHistory():
     """Initialize revolution index history with memory-efficient structure"""
     global revIdxHistKeyList
 
+<<<<<<< Updated upstream
     # Memory optimization: Use list multiplication for initialization
     # This creates references to the same object for all zero values
     zero_list = [0]
@@ -89,6 +90,13 @@ def initRevIdxHistory():
     for key in revIdxHistKeyList:
         # Create new list only when needed
         revIdxHist[key] = list(zero_list)
+=======
+    # Build independent lists of configured length
+    zeros = [0] * revIdxHistLen
+    revIdxHist = {}
+    for key in revIdxHistKeyList:
+        revIdxHist[key] = list(zeros)
+>>>>>>> Stashed changes
 
     return revIdxHist
 
@@ -163,6 +171,10 @@ class RevoltData(object):
         if self._cached_dict is None:
             dataDict = {
                 'iPlayer': self.iPlayer,
+<<<<<<< Updated upstream
+=======
+                'iRevTurn': self.iRevTurn,
+>>>>>>> Stashed changes
                 'cityList': self.cityList,
                 'revType': self.revType,
                 'bPeaceful': self.bPeaceful
@@ -184,7 +196,11 @@ class RevoltData(object):
         self._cached_dict = None
 
         # Memory optimization: Pre-size dictionary if possible
+<<<<<<< Updated upstream
         special_count = len(sourceDict) - 4  # Subtract known keys
+=======
+        special_count = len(sourceDict) - 5  # Known keys: iPlayer, iRevTurn, cityList, revType, bPeaceful
+>>>>>>> Stashed changes
         if special_count > 0:
             self.specialDataDict = {}
             # Pre-allocate approximate size to reduce resizing
@@ -195,6 +211,11 @@ class RevoltData(object):
         for key, value in sourceDict.iteritems():
             if key == 'iPlayer':
                 self.iPlayer = value
+<<<<<<< Updated upstream
+=======
+            elif key == 'iRevTurn':
+                self.iRevTurn = value
+>>>>>>> Stashed changes
             elif key == 'cityList':
                 self.cityList = value
             elif key == 'revType':

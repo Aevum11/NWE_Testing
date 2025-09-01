@@ -7,6 +7,15 @@
 
 from CvPythonExtensions import CyGlobalContext
 
+<<<<<<< Updated upstream
+=======
+# Python 2/3 compatibility
+try:
+    xrange
+except NameError:
+    xrange = range
+
+>>>>>>> Stashed changes
 # Use a single dictionary instead of a list, with tuples for immutable data
 # Tuples use less memory than lists for fixed collections
 RebelTypeDict = {}

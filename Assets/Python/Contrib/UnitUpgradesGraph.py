@@ -184,7 +184,12 @@ class UnitUpgradesGraph:
 
     def _processConnectedComponent(self, mGraph, newMGraph, mGraphIndex):
         "Memory-efficient connected component processing"
+<<<<<<< Updated upstream
 
+=======
+        if not mGraph.graph:
+            return
+>>>>>>> Stashed changes
         # Pick first element
         unit = mGraph.graph.iterkeys().next()
         mGraph.graph[unit].x = 0

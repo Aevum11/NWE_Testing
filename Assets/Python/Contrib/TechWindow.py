@@ -272,7 +272,12 @@ class CvTechSplashScreen:
     def _addTechItems(self, screen):
         """Add all items enabled by this tech"""
         # Cache panel name once
+<<<<<<< Updated upstream
         panelName = self.nWidgetCount - 1  # Use cached widget name index
+=======
+        # Cache the widget name for panel use
+        panelName = self.getNextWidgetName()
+>>>>>>> Stashed changes
 
         # Pre-cache tech lists for efficiency
         num_techs = GC.getNumTechInfos()

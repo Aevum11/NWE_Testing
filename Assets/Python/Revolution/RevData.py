@@ -73,16 +73,28 @@ def _initObjectIfNeeded(object):
     obj_type = _getObjectType(object)
 
     if obj_type == 1:  # Player
+<<<<<<< Updated upstream
         print _MSG_INIT_PLAYER
         initPlayer(object)
         return 1
     elif obj_type == 2:  # City
         print _MSG_INIT_CITY
+=======
+        print(_MSG_INIT_PLAYER)
+        initPlayer(object)
+        return 1
+    elif obj_type == 2:  # City
+        print(_MSG_INIT_CITY)
+>>>>>>> Stashed changes
         initCity(object)
         return 2
     else:
         # SDTK will fail
+<<<<<<< Updated upstream
         print _ERR_NOT_RECOGNIZED, object
+=======
+        print(_ERR_NOT_RECOGNIZED + str(object))
+>>>>>>> Stashed changes
         return 0
 
 
@@ -99,10 +111,17 @@ def revObjectGetVal(object, var):
     # Validate variable names (only in debug, can be commented out for production)
     if obj_type == 1:  # Player
         if var not in RevDefs._playerDataTemplate:
+<<<<<<< Updated upstream
             print _WARN_UNRECOG_PLAYER, var
     elif obj_type == 2:  # City
         if var not in RevDefs._cityDataTemplate:
             print _WARN_UNRECOG_CITY, var
+=======
+            print(_WARN_UNRECOG_PLAYER + str(var))
+    elif obj_type == 2:  # City
+        if var not in RevDefs._cityDataTemplate:
+            print(_WARN_UNRECOG_CITY + str(var))
+>>>>>>> Stashed changes
 
     return SdToolKit.sdObjectGetVal(_REVOLUTION, object, var)
 
@@ -188,12 +207,20 @@ def getCityVal(pCity, var):
             # Only iterate if we know keys are missing
             for key in keyList:
                 if key not in valKeys:
+<<<<<<< Updated upstream
                     print _WARN_MISSING_KEY, key, ", initializing it"
+=======
+                    print(_WARN_MISSING_KEY + str(key) + ", initializing it")
+>>>>>>> Stashed changes
                     val[key] = [0]
 
     elif val is None and var not in _getCityDataKeys():
         initCity(pCity)
+<<<<<<< Updated upstream
         print _ERR_VAR_NOT_VALID % var
+=======
+        print(_ERR_VAR_NOT_VALID % var)
+>>>>>>> Stashed changes
         assert False
 
     return val

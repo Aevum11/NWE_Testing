@@ -1,7 +1,7 @@
 # DynamicCivNames
 #
 # by jdog5000
-# Version 1.0
+# Version 1.0 - Memory Optimized
 #
 # French compatibility from calvitix
 #
@@ -13,582 +13,690 @@ import TextUtil
 import SdToolKit as SDTK
 import RevUtils
 
+# Cache global references once
 GC = CyGlobalContext()
 GAME = GC.getGame()
 TRNSLTR = CyTranslator()
 
+# Module state
 bEnabled = False
+femaleLeaders = None  # Will be initialized as tuple
+_cached_strings = {}  # Cache for frequently used strings
+_info_type_cache = {}  # Cache for getInfoTypeForString calls
+
+
+def _get_info_type(key):
+    """Cached version of getInfoTypeForString to reduce repeated lookups"""
+    if key not in _info_type_cache:
+        _info_type_cache[key] = GC.getInfoTypeForString(key)
+    return _info_type_cache[key]
+
+
+def _get_cached_text(key, default_args=()):
+    """Cache frequently used translation texts"""
+    cache_key = (key, default_args)
+    if cache_key not in _cached_strings:
+        _cached_strings[cache_key] = TRNSLTR.getText(key, default_args)
+    return _cached_strings[cache_key]
 
 
 def init():
-	global bEnabled, femaleLeaders
-	if bEnabled: return
+    global bEnabled, femaleLeaders
+    if bEnabled:
+        return
 
-	EM = getEventManager()
-	EM.addEventHandler("BeginPlayerTurn", onBeginPlayerTurn)
-	EM.addEventHandler("setPlayerAlive", onSetPlayerAlive)
-	EM.addEventHandler("cityAcquiredAndKept", onCityAcquiredAndKept)
-	EM.addEventHandler("cityBuilt", onCityBuilt)
-	EM.addEventHandler("vassalState", onVassalState)
-	EM.addEventHandler("addTeam", onAddTeam)
+    EM = getEventManager()
+    # Register event handlers
+    EM.addEventHandler("BeginPlayerTurn", onBeginPlayerTurn)
+    EM.addEventHandler("setPlayerAlive", onSetPlayerAlive)
+    EM.addEventHandler("cityAcquiredAndKept", onCityAcquiredAndKept)
+    EM.addEventHandler("cityBuilt", onCityBuilt)
+    EM.addEventHandler("vassalState", onVassalState)
+    EM.addEventHandler("addTeam", onAddTeam)
 
-	femaleLeaders = (
-		GC.getInfoTypeForString("LEADER_BOUDICA"),
-		GC.getInfoTypeForString("LEADER_ELIZABETH"),
-		GC.getInfoTypeForString("LEADER_HATSHEPSUT"),
-		GC.getInfoTypeForString("LEADER_VICTORIA"),
-		GC.getInfoTypeForString("LEADER_ATOTOZTLI"),
-		GC.getInfoTypeForString("LEADER_CLEOPATRA"),
-		GC.getInfoTypeForString("LEADER_DIDO"),
-		GC.getInfoTypeForString("LEADER_JOANOFARC"),
-		GC.getInfoTypeForString("LEADER_NEFERTITI"),
-		GC.getInfoTypeForString("LEADER_THEODORA"),
-		GC.getInfoTypeForString("LEADER_WU")
-	)
+    # Use tuple instead of list for immutable data - saves memory
+    femaleLeaders = (
+        _get_info_type("LEADER_BOUDICA"),
+        _get_info_type("LEADER_ELIZABETH"),
+        _get_info_type("LEADER_HATSHEPSUT"),
+        _get_info_type("LEADER_VICTORIA"),
+        _get_info_type("LEADER_ATOTOZTLI"),
+        _get_info_type("LEADER_CLEOPATRA"),
+        _get_info_type("LEADER_DIDO"),
+        _get_info_type("LEADER_JOANOFARC"),
+        _get_info_type("LEADER_NEFERTITI"),
+        _get_info_type("LEADER_THEODORA"),
+        _get_info_type("LEADER_WU")
+    )
 
-	#bTeamNaming = REV_OPTIONS.isTeamNaming()
-	#bLeaveHumanName = REV_OPTIONS.isLeaveHumanPlayerName()
+    # Initialize players if needed
+    if not GAME.isFinalInitialized or GAME.getGameTurn() == GAME.getStartTurn():
+        max_players = GC.getMAX_PC_PLAYERS()
+        for i in xrange(max_players):
+            player = GC.getPlayer(i)
+            if player.isAlive():
+                onSetPlayerAlive([i, True])
 
-	if not GAME.isFinalInitialized or GAME.getGameTurn() == GAME.getStartTurn():
-		for i in xrange(GC.getMAX_PC_PLAYERS()):
-			onSetPlayerAlive([i, GC.getPlayer(i).isAlive()])
-
-	bEnabled = True
+    bEnabled = True
 
 
 def uninit():
-	global bEnabled
-	if not bEnabled: return
+    global bEnabled, _cached_strings, _info_type_cache
+    if not bEnabled:
+        return
 
-	EM = getEventManager()
-	EM.removeEventHandler("BeginPlayerTurn", onBeginPlayerTurn)
-	EM.removeEventHandler("setPlayerAlive", onSetPlayerAlive)
-	EM.removeEventHandler("cityAcquiredAndKept", onCityAcquiredAndKept)
-	EM.removeEventHandler("cityBuilt", onCityBuilt)
-	EM.removeEventHandler("vassalState", onVassalState)
-	EM.removeEventHandler("addTeam", onAddTeam)
+    EM = getEventManager()
+    # Unregister event handlers
+    EM.removeEventHandler("BeginPlayerTurn", onBeginPlayerTurn)
+    EM.removeEventHandler("setPlayerAlive", onSetPlayerAlive)
+    EM.removeEventHandler("cityAcquiredAndKept", onCityAcquiredAndKept)
+    EM.removeEventHandler("cityBuilt", onCityBuilt)
+    EM.removeEventHandler("vassalState", onVassalState)
+    EM.removeEventHandler("addTeam", onAddTeam)
 
-	for i in range(GC.getMAX_PC_PLAYERS()):
-		if GC.getPlayer(i).isAlive():
-			resetName(i)
+    # Reset all player names
+    max_players = GC.getMAX_PC_PLAYERS()
+    for i in xrange(max_players):
+        if GC.getPlayer(i).isAlive():
+            resetName(i)
 
-	bEnabled = False
+    # Clear caches
+    _cached_strings.clear()
+    _info_type_cache.clear()
+
+    bEnabled = False
 
 
 def blankHandler(playerID, netUserData, popupReturn):
-	""" Dummy handler to take the second event for popup """
-	return
+    """Dummy handler to take the second event for popup"""
+    return
 
 
 def onBeginPlayerTurn(argsList):
-	#iGameTurn = argsList[0]
-	iPlayer = argsList[1]
+    iPlayer = argsList[1]
 
-	# Stuff at end of previous players turn
-	iPrevPlayer = iPlayer - 1
-	while iPrevPlayer >= 0 and not GC.getPlayer(iPrevPlayer).isAlive():
-		iPrevPlayer -= 1
+    # Find previous living player
+    iPrevPlayer = iPlayer - 1
+    while iPrevPlayer >= 0:
+        if GC.getPlayer(iPrevPlayer).isAlive():
+            break
+        iPrevPlayer -= 1
 
-	if iPrevPlayer < 0:
-		iPrevPlayer = GC.getBARBARIAN_PLAYER()
+    if iPrevPlayer < 0:
+        iPrevPlayer = GC.getBARBARIAN_PLAYER()
 
-	if iPrevPlayer >= 0 and iPrevPlayer < GC.getMAX_PC_PLAYERS():
-		iPlayer = iPrevPlayer
-		pPlayer = GC.getPlayer(iPlayer)
+    if not (0 <= iPrevPlayer < GC.getMAX_PC_PLAYERS()):
+        return
 
-		if pPlayer.isAnarchy():
-			setNewNameByCivics(iPlayer)
-			return
+    pPlayer = GC.getPlayer(iPrevPlayer)
+    if not pPlayer.isAlive():
+        return
 
-		if pPlayer.isAlive() and SDTK.sdObjectExists("Revolution", pPlayer):
-			prevCivics = SDTK.sdObjectGetVal("Revolution", pPlayer, 'CivicList')
-			if not prevCivics == None:
-				for i in xrange(GC.getNumCivicOptionInfos()):
-					if not prevCivics[i] == pPlayer.getCivics(i):
-						setNewNameByCivics(iPlayer)
-						return
+    # Check for anarchy
+    if pPlayer.isAnarchy():
+        setNewNameByCivics(iPrevPlayer)
+        return
 
-			revTurn = SDTK.sdObjectGetVal("Revolution", pPlayer, 'RevolutionTurn')
-			if revTurn is not None and GAME.getGameTurn() - revTurn == 30 and pPlayer.getNumCities() > 0:
-				# "Graduate" from rebel name
-				setNewNameByCivics(iPlayer)
-				return
+    # Check for civic changes
+    if SDTK.sdObjectExists("Revolution", pPlayer):
+        prevCivics = SDTK.sdObjectGetVal("Revolution", pPlayer, 'CivicList')
+        if prevCivics is not None:
+            num_civics = GC.getNumCivicOptionInfos()
+            for i in xrange(num_civics):
+                if prevCivics[i] != pPlayer.getCivics(i):
+                    setNewNameByCivics(iPrevPlayer)
+                    return
 
-		if pPlayer.isAlive() and SDTK.sdObjectExists("BarbarianCiv", pPlayer):
-			barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
-			if barbTurn is not None and GAME.getGameTurn() - barbTurn == 30:
-				# "Graduate" from barb civ name
-				setNewNameByCivics(iPlayer)
-				return
+        # Check revolution graduation
+        revTurn = SDTK.sdObjectGetVal("Revolution", pPlayer, 'RevolutionTurn')
+        if revTurn is not None:
+            if GAME.getGameTurn() - revTurn == 30 and pPlayer.getNumCities() > 0:
+                setNewNameByCivics(iPrevPlayer)
+                return
 
-		if (pPlayer.isAlive()
-		and not SDTK.sdObjectExists("BarbarianCiv", pPlayer)
-		and 'Tribe' in pPlayer.getCivilizationDescription(0)
-		and (pPlayer.getCurrentEra() > 0 or pPlayer.getTotalPopulation() >= 3)
-		):
-			# Graduate from game start name
-			setNewNameByCivics(iPlayer)
-			return
+    # Check barbarian civ graduation
+    if SDTK.sdObjectExists("BarbarianCiv", pPlayer):
+        barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
+        if barbTurn is not None and GAME.getGameTurn() - barbTurn == 30:
+            setNewNameByCivics(iPrevPlayer)
+            return
+
+    # Check tribe graduation
+    if (not SDTK.sdObjectExists("BarbarianCiv", pPlayer) and
+            'Tribe' in pPlayer.getCivilizationDescription(0) and
+            (pPlayer.getCurrentEra() > 0 or pPlayer.getTotalPopulation() >= 3)):
+        setNewNameByCivics(iPrevPlayer)
 
 
 def onCityAcquiredAndKept(argsList):
-	#iOwnerOld, iOwnerNew, city, bConquest, bTrade = argsList
-	iPlayer = argsList[1]
-	owner = GC.getPlayer(iPlayer)
-	if owner.isAlive() and not owner.isNPC() and owner.getNumCities() < 5 and owner.getNumMilitaryUnits() > 0:
-		setNewNameByCivics(iPlayer)
+    iPlayer = argsList[1]
+    owner = GC.getPlayer(iPlayer)
+    if (owner.isAlive() and not owner.isNPC() and
+            owner.getNumCities() < 5 and owner.getNumMilitaryUnits() > 0):
+        setNewNameByCivics(iPlayer)
 
 
 def onCityBuilt(argsList):
-	owner = GC.getPlayer(argsList[0].getOwner())
-	if owner.isAlive() and not owner.isNPC() and owner.getNumCities() < 5 and owner.getNumMilitaryUnits() > 0:
-		setNewNameByCivics(owner.getID())
+    owner = GC.getPlayer(argsList[0].getOwner())
+    if (owner.isAlive() and not owner.isNPC() and
+            owner.getNumCities() < 5 and owner.getNumMilitaryUnits() > 0):
+        setNewNameByCivics(owner.getID())
 
 
 def onVassalState(argsList):
-	iVassal = argsList[1]
-	for iPlayer in xrange(GC.getMAX_PC_PLAYERS()):
-		if GC.getPlayer(iPlayer).getTeam() == iVassal:
-			setNewNameByCivics(iPlayer)
+    iVassal = argsList[1]
+    max_players = GC.getMAX_PC_PLAYERS()
+    for iPlayer in xrange(max_players):
+        if GC.getPlayer(iPlayer).getTeam() == iVassal:
+            setNewNameByCivics(iPlayer)
 
 
 def setNewNameByCivics(iPlayer):
-	#if bLeaveHumanName and (GC.getPlayer(iPlayer).isHuman() or GAME.getActivePlayer() == iPlayer):
-	#	return
-	[newCivDesc, newCivShort, newCivAdj] = newNameByCivics(iPlayer)
+    newCivDesc, newCivShort, newCivAdj = newNameByCivics(iPlayer)
 
-	if not newCivDesc == GC.getPlayer(iPlayer).getCivilizationDescription(0):
-		szMessage = TRNSLTR.getText("TXT_KEY_MOD_DCN_NEWCIV_NAME_DESC", (newCivDesc,))
-		CyInterface().addMessage(iPlayer, False, GC.getEVENT_MESSAGE_TIME(), szMessage, None, InterfaceMessageTypes.MESSAGE_TYPE_INFO, None, GC.getInfoTypeForString("COLOR_HIGHLIGHT_TEXT"), -1, -1, False, False)
+    pPlayer = GC.getPlayer(iPlayer)
+    if newCivDesc != pPlayer.getCivilizationDescription(0):
+        szMessage = TRNSLTR.getText("TXT_KEY_MOD_DCN_NEWCIV_NAME_DESC", (newCivDesc,))
+        CyInterface().addMessage(iPlayer, False, GC.getEVENT_MESSAGE_TIME(),
+                                 szMessage, None, InterfaceMessageTypes.MESSAGE_TYPE_INFO, None,
+                                 _get_info_type("COLOR_HIGHLIGHT_TEXT"), -1, -1, False, False)
 
-	GC.getPlayer(iPlayer).setCivName(newCivDesc, newCivShort, newCivAdj)
+    pPlayer.setCivName(newCivDesc, newCivShort, newCivAdj)
 
 
 def onSetPlayerAlive(argsList):
-	iPlayerID = argsList[0]
-	bNewValue = argsList[1]
-	if bNewValue and iPlayerID < GC.getMAX_PC_PLAYERS():
-		pPlayer = GC.getPlayer(iPlayerID)
-		#if bLeaveHumanName and (pPlayer.isHuman() or GAME.getActivePlayer() == iPlayerID):
-		#	return
-		[newCivDesc, newCivShort, newCivAdj] = nameForNewPlayer(iPlayerID)
+    iPlayerID = argsList[0]
+    bNewValue = argsList[1]
 
-		# Pass to pPlayer seems to require a conversion to 'ascii'
-		pPlayer.setCivName(newCivDesc, newCivShort, newCivAdj)
+    if bNewValue and iPlayerID < GC.getMAX_PC_PLAYERS():
+        pPlayer = GC.getPlayer(iPlayerID)
+        newCivDesc, newCivShort, newCivAdj = nameForNewPlayer(iPlayerID)
+        pPlayer.setCivName(newCivDesc, newCivShort, newCivAdj)
 
 
 def onAddTeam(argsList):
-	eTeam1 = argsList[0]
-	eTeam2 = argsList[1]
-	for i in xrange(GC.getMAX_PC_PLAYERS()):
-		pPlayer = GC.getPlayer(i)
-		if pPlayer.isAlive() and pPlayer.getTeam() in (eTeam1, eTeam2):
-			setNewNameByCivics(i)
+    eTeam1 = argsList[0]
+    eTeam2 = argsList[1]
+    max_players = GC.getMAX_PC_PLAYERS()
+
+    for i in xrange(max_players):
+        pPlayer = GC.getPlayer(i)
+        if pPlayer.isAlive():
+            team = pPlayer.getTeam()
+            if team == eTeam1 or team == eTeam2:
+                setNewNameByCivics(i)
 
 
 def nameForNewPlayer(iPlayer):
-	# Assigns a new name to a recently created player from either
-	# BarbarianCiv or Revolution components
-	pPlayer = GC.getPlayer(iPlayer)
-	curShort = pPlayer.getCivilizationShortDescription(0)
-	curDesc = pPlayer.getCivilizationDescription(0)
-	curAdj = pPlayer.getCivilizationAdjective(0)
+    """Assigns a new name to a recently created player"""
+    pPlayer = GC.getPlayer(iPlayer)
+    curShort = pPlayer.getCivilizationShortDescription(0)
+    curDesc = pPlayer.getCivilizationDescription(0)
+    curAdj = pPlayer.getCivilizationAdjective(0)
 
-	if not pPlayer.isAlive():
-		return [TRNSLTR.getText("TXT_KEY_MOD_DCN_REFUGEES", ())%(curAdj), curShort, curAdj]
+    if not pPlayer.isAlive():
+        return [_get_cached_text("TXT_KEY_MOD_DCN_REFUGEES", ()) % curAdj, curShort, curAdj]
 
-	currentEra = 0
-	for i in xrange(GC.getMAX_PC_PLAYERS()):
-		if GC.getPlayer(i).getCurrentEra() > currentEra:
-			currentEra = GC.getPlayer(i).getCurrentEra()
+    # Find current era
+    currentEra = 0
+    max_players = GC.getMAX_PC_PLAYERS()
+    for i in xrange(max_players):
+        era = GC.getPlayer(i).getCurrentEra()
+        if era > currentEra:
+            currentEra = era
 
-	if pPlayer.isRebel():
-		# To name rebels in Revolution mod
-		sLiberation = TRNSLTR.getText("TXT_KEY_MOD_DCN_LIBERATION_FRONT", ()).replace('%s','').strip()
-		sGuerillas = TRNSLTR.getText("TXT_KEY_MOD_DCN_GUERILLAS", ()).replace('%s','').strip()
-		sRebels = TRNSLTR.getText("TXT_KEY_MOD_DCN_REBELS", ()).replace('%s','').strip()
+    if pPlayer.isRebel():
+        # Cache these strings
+        sLiberation = _get_cached_text("TXT_KEY_MOD_DCN_LIBERATION_FRONT", ()).replace('%s', '').strip()
+        sGuerillas = _get_cached_text("TXT_KEY_MOD_DCN_GUERILLAS", ()).replace('%s', '').strip()
+        sRebels = _get_cached_text("TXT_KEY_MOD_DCN_REBELS", ()).replace('%s', '').strip()
 
-		if sLiberation in curDesc or sGuerillas in curDesc or sRebels in curDesc:
-			newName = curDesc
+        # Check if already has rebel name
+        if sLiberation in curDesc or sGuerillas in curDesc or sRebels in curDesc:
+            newName = curDesc
+        elif currentEra > 5 and GAME.getSorenRandNum(100, 'Rev: Naming') < 30:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_LIBERATION_FRONT", ()) % curAdj
+        elif currentEra > 4 and GAME.getSorenRandNum(100, 'Rev: Naming') < 30:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_GUERILLAS", ()) % curAdj
+        else:
+            cityString = SDTK.sdObjectGetVal("Revolution", pPlayer, 'CapitalName')
 
-		elif currentEra > 5 and 30 > GAME.getSorenRandNum(100,'Rev: Naming'):
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_LIBERATION_FRONT", ())%(curAdj)
+            if cityString is not None and len(cityString) < 10:
+                try:
+                    if cityString in curAdj or cityString in curShort:
+                        newName = _get_cached_text("TXT_KEY_MOD_DCN_THE_REBELS_OF", ()) % TextUtil.convertToStr(
+                            cityString)
+                    else:
+                        newName = _get_cached_text("TXT_KEY_MOD_DCN_REBELS_OF", ()) % (curAdj, TextUtil.convertToStr(
+                            cityString))
+                except:
+                    newName = _get_cached_text("TXT_KEY_MOD_DCN_REBELS", ()) % curAdj
+            else:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_REBELS", ()) % curAdj
 
-		elif currentEra > 4 and 30 > GAME.getSorenRandNum(100,'Rev: Naming'):
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_GUERILLAS", ())%(curAdj)
-		else:
-			cityString = SDTK.sdObjectGetVal("Revolution", pPlayer, 'CapitalName')
+        return [newName, curShort, curAdj]
 
-			if cityString is not None and len(cityString) < 10:
-				try:
-					if cityString in curAdj or cityString in curShort:
-						newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_REBELS_OF", ())%(TextUtil.convertToStr(cityString))
-					else:
-						newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REBELS_OF", ())%(curAdj,TextUtil.convertToStr(cityString))
-				except:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REBELS", ())%(curAdj)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REBELS", ())%(curAdj)
+    # Check for barbarian civ
+    barbTurn = None
+    if SDTK.sdObjectExists("BarbarianCiv", pPlayer):
+        barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
 
-		return [newName, curShort, curAdj]
+    if barbTurn is not None and GAME.getGameTurn() - barbTurn < 20:
+        numCities = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'NumCities')
+        cityString = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'CapitalName')
 
-	if SDTK.sdObjectExists("BarbarianCiv", pPlayer):
-		barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
-	else: barbTurn = None
+        if pPlayer.isMinorCiv():
+            if currentEra > 2:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_NATION", ()) % curAdj
+            elif currentEra == 2:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_CITY_STATE", ()) % curAdj
+            elif GAME.getSorenRandNum(100, "Naming") < (70 - 40 * currentEra):
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_TRIBE", ()) % curAdj
+            else:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_CITY_STATE", ()) % curAdj
 
-	if barbTurn is not None and GAME.getGameTurn() - barbTurn < 20:
-		# To name BarbarianCiv created civs
-		numCities = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'NumCities')
-		cityString = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'CapitalName')
+        elif currentEra < 4:
+            if SDTK.sdObjectGetVal('BarbarianCiv', pPlayer, 'BarbStyle') != 'Military':
+                if numCities == 1:
+                    newName = _get_cached_text("TXT_KEY_MOD_DCN_CITY_STATE", ()) % curAdj
+                else:
+                    newName = _get_cached_text("TXT_KEY_MOD_DCN_EMPIRE", ()) % curAdj
 
-		if pPlayer.isMinorCiv():
-			if currentEra > 2:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_NATION", ())%(curAdj)
+                if numCities < 3 and cityString is not None and len(cityString) < 10:
+                    newName += _get_cached_text("TXT_KEY_MOD_DCN_OF_CITY", ()) % cityString
 
-			elif currentEra == 2:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_CITY_STATE", ())%(curAdj)
+            elif pPlayer.getNumMilitaryUnits() > 7 * numCities:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_HORDE", ()) % curAdj
+            elif cityString is None or len(cityString) > 9:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_WARRIOR_STATE", ()) % curAdj
+            elif cityString in curAdj or cityString in curShort:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_THE_WARRIORS_OF", ()) % cityString
+            else:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_WARRIORS_OF", ()) % (curAdj, cityString)
+        else:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_EMPIRE", ()) % curAdj
+            if numCities < 3 and cityString is not None and len(cityString) < 10:
+                newName += _get_cached_text("TXT_KEY_MOD_DCN_OF_CITY", ()) % cityString
 
-			elif 70 - 40*currentEra > GAME.getSorenRandNum(100,"Naming"):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_TRIBE", ())%(curAdj)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_CITY_STATE", ())%(curAdj)
+        return [newName, curShort, curAdj]
 
-		elif currentEra < 4:
-			# Early era barbs
-			if SDTK.sdObjectGetVal('BarbarianCiv', pPlayer, 'BarbStyle') != 'Military':
-				if numCities == 1:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_CITY_STATE", ())%(curAdj)
-				else:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_EMPIRE", ())%(curAdj)
+    # Early game naming
+    if GAME.getGameTurn() == GAME.getStartTurn() and GAME.getCurrentEra() < 1:
+        return [_get_cached_text("TXT_KEY_MOD_DCN_TRIBE", ()) % curAdj, curShort, curAdj]
 
-				if numCities < 3 and cityString is not None and len(cityString) < 10:
-					newName += TRNSLTR.getText("TXT_KEY_MOD_DCN_OF_CITY", ())%(cityString)
-
-			elif pPlayer.getNumMilitaryUnits() > 7*numCities:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_HORDE", ())%(curAdj)
-
-			elif cityString is None or len(cityString) > 9:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_WARRIOR_STATE", ())%(curAdj)
-
-			elif cityString in curAdj or cityString in curShort:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_WARRIORS_OF", ())%(cityString)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_WARRIORS_OF", ())%(curAdj,cityString)
-
-		else:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_EMPIRE", ())%(curAdj)
-			if numCities < 3 and cityString is not None and len(cityString) < 10:
-				newName += TRNSLTR.getText("TXT_KEY_MOD_DCN_OF_CITY", ())%(cityString)
-
-		return [newName, curShort, curAdj]
-
-	if GAME.getGameTurn() == GAME.getStartTurn() and GAME.getCurrentEra() < 1:
-		# Name civs at beginning of game
-		return [TRNSLTR.getText("TXT_KEY_MOD_DCN_TRIBE", ())%(curAdj), curShort, curAdj]
-
-	return newNameByCivics(iPlayer)
+    return newNameByCivics(iPlayer)
 
 
 def newNameByCivics(iPlayer):
-	# Assigns a new name to a player based on their civics choices
-	pPlayer = GC.getPlayer(iPlayer)
-	capital = pPlayer.getCapitalCity()
-	pTeam = GC.getTeam(pPlayer.getTeam())
+    """Assigns a new name to a player based on their civics choices"""
+    pPlayer = GC.getPlayer(iPlayer)
+    capital = pPlayer.getCapitalCity()
+    pTeam = GC.getTeam(pPlayer.getTeam())
 
-	cityString = None
-	if capital:
-		try :
-			# Silly game to force ascii encoding now
-			cityString =	pPlayer.getCivilizationDescription(0)
-			cityString += "&" + TextUtil.convertToStr(capital.getName())
-			cityString =	cityString.split('&',1)[-1]
-		except :
-			pass
+    # Get city string if capital exists
+    cityString = None
+    if capital:
+        try:
+            # Optimize string operations
+            cityString = pPlayer.getCivilizationDescription(0)
+            cityString += "&" + TextUtil.convertToStr(capital.getName())
+            cityString = cityString.split('&', 1)[-1]
+        except:
+            pass
 
-	curDesc	= pPlayer.getCivilizationDescription(0)
-	curShort = pPlayer.getCivilizationShortDescription(0)
-	curAdj	 = pPlayer.getCivilizationAdjective(0)
+    curDesc = pPlayer.getCivilizationDescription(0)
+    curShort = pPlayer.getCivilizationShortDescription(0)
+    curAdj = pPlayer.getCivilizationAdjective(0)
 
-	origDesc = ""
-	if pPlayer.getCivilizationType() >= 0:
-		civInfo = GC.getCivilizationInfo(pPlayer.getCivilizationType())
-		origDesc = civInfo.getDescription()
+    # Get original description
+    origDesc = ""
+    civType = pPlayer.getCivilizationType()
+    if civType >= 0:
+        origDesc = GC.getCivilizationInfo(civType).getDescription()
 
-	iLanguage = GAME.getCurrentLanguage()
-	bFrench = iLanguage == 1 #0 - English, 1 - French, 2 - German, 3 - Italian, 4 - Spanish
+    # Language check
+    bFrench = GAME.getCurrentLanguage() == 1
 
-	eGovCivic = pPlayer.getCivics(GC.getInfoTypeForString("CIVICOPTION_GOVERNMENT"))
-	ePowerCivic = pPlayer.getCivics(GC.getInfoTypeForString("CIVICOPTION_POWER"))
-	bNoRealElections = (GC.getInfoTypeForString("CIVIC_MONARCHY") == eGovCivic or GC.getInfoTypeForString("CIVIC_MONARCHY") == eGovCivic or GC.getInfoTypeForString("CIVIC_DESPOTISM") == eGovCivic or GC.getInfoTypeForString("CIVIC_TOTALITARIANISM") == eGovCivic)
+    # Cache civic lookups
+    eGovCivic = pPlayer.getCivics(_get_info_type("CIVICOPTION_GOVERNMENT"))
+    ePowerCivic = pPlayer.getCivics(_get_info_type("CIVICOPTION_POWER"))
 
-	bFederal = (GC.getInfoTypeForString("CIVIC_FEDERALISM") == eGovCivic and (ePowerCivic == GC.getInfoTypeForString("CIVIC_LEGISLATURE")))
-	bConfederation = (not bFederal and (GC.getInfoTypeForString("CIVIC_FEDERALISM") == eGovCivic))
+    # Pre-calculate frequently used civic types
+    monarchy_type = _get_info_type("CIVIC_MONARCHY")
+    despotism_type = _get_info_type("CIVIC_DESPOTISM")
+    totalitarian_type = _get_info_type("CIVIC_TOTALITARIANISM")
+    federalism_type = _get_info_type("CIVIC_FEDERALISM")
+    legislature_type = _get_info_type("CIVIC_LEGISLATURE")
 
-	bPacifist = (pPlayer.getCivics(GC.getInfoTypeForString("CIVICOPTION_MILITARY")) == GC.getInfoTypeForString("CIVIC_PACIFISM"))
+    bNoRealElections = (eGovCivic == monarchy_type or
+                        eGovCivic == despotism_type or
+                        eGovCivic == totalitarian_type)
 
-	newName = curDesc
-	if SDTK.sdObjectExists("Revolution", pPlayer):
-		SDTK.sdObjectGetVal("Revolution", pPlayer, 'RevolutionTurn')
+    bFederal = (eGovCivic == federalism_type and ePowerCivic == legislature_type)
+    bConfederation = (not bFederal and eGovCivic == federalism_type)
 
-	if SDTK.sdObjectExists("BarbarianCiv", pPlayer):
-		barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
-	else:
-		barbTurn = None
+    bPacifist = (pPlayer.getCivics(_get_info_type("CIVICOPTION_MILITARY")) ==
+                 _get_info_type("CIVIC_PACIFISM"))
 
-	if not pPlayer.isAlive():
-		newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REFUGEES", ())%(curAdj)
-		return [newName, curShort, curAdj]
+    newName = curDesc
 
-	if pPlayer.isRebel():
-		return [curDesc, curShort, curAdj]	# Maintain name of rebels from Revolution Mod
+    # Check barbarian turn
+    barbTurn = None
+    if SDTK.sdObjectExists("BarbarianCiv", pPlayer):
+        barbTurn = SDTK.sdObjectGetVal("BarbarianCiv", pPlayer, 'SpawnTurn')
 
-	if pPlayer.isMinorCiv() and barbTurn is not None:
-		return [curDesc, curShort, curAdj]	# Maintain minor civ name
+    # Early returns for special cases
+    if not pPlayer.isAlive():
+        return [_get_cached_text("TXT_KEY_MOD_DCN_REFUGEES", ()) % curAdj, curShort, curAdj]
 
-	if barbTurn is not None and GAME.getGameTurn() - barbTurn < 20 and pPlayer.getNumCities() < 4:
-		return [curDesc, curShort, curAdj]	# Maintain name of BarbarianCiv created player
+    if pPlayer.isRebel():
+        return [curDesc, curShort, curAdj]
 
-	# Special options for teams and permanent alliances
-	#if bTeamNaming and pTeam.getNumMembers() > 1: # and pTeam.getPermanentAllianceTradingCount() > 0:
-	if pTeam.getNumMembers() > 1: # and pTeam.getPermanentAllianceTradingCount() > 0:
+    if pPlayer.isMinorCiv() and barbTurn is not None:
+        return [curDesc, curShort, curAdj]
 
-		iLeader = pTeam.getLeaderID()
+    if barbTurn is not None and GAME.getGameTurn() - barbTurn < 20 and pPlayer.getNumCities() < 4:
+        return [curDesc, curShort, curAdj]
 
-		if pTeam.getNumMembers() == 2:
-			newName = GC.getPlayer(iLeader).getCivilizationAdjective(0) + "-"
-			for idx in xrange(GC.getMAX_PC_PLAYERS()):
-				if idx != iLeader and GC.getPlayer(idx).getTeam() == pTeam.getID():
-					newName += GC.getPlayer(idx).getCivilizationAdjective(0)
-					break
-			newName += TRNSLTR.getText("TXT_KEY_MOD_DCN_ALLIANCE", ())
-			return [newName,curShort,curAdj]
-		else:
-			newName = GC.getPlayer(iLeader).getCivilizationAdjective(0)[0:4]
-			for idx in xrange(GC.getMAX_PC_PLAYERS()):
-				if not idx == iLeader and GC.getPlayer(idx).getTeam() == pTeam.getID():
-					newName += GC.getPlayer(idx).getCivilizationAdjective(0)[0:3]
-			newName += TRNSLTR.getText("TXT_KEY_MOD_DCN_ALLIANCE", ())
-			return [newName,curShort,curAdj]
+    # Team naming
+    numMembers = pTeam.getNumMembers()
+    if numMembers > 1:
+        iLeader = pTeam.getLeaderID()
 
-	sSocRep = TRNSLTR.getText("TXT_KEY_MOD_DCN_SOC_REP", ()).replace('%s','').strip()
-	sPeoplesRep = TRNSLTR.getText("TXT_KEY_MOD_DCN_PEOPLES_REP", ()).replace('%s','').strip()
+        if numMembers == 2:
+            newName = GC.getPlayer(iLeader).getCivilizationAdjective(0) + "-"
+            max_players = GC.getMAX_PC_PLAYERS()
+            for idx in xrange(max_players):
+                if idx != iLeader and GC.getPlayer(idx).getTeam() == pTeam.getID():
+                    newName += GC.getPlayer(idx).getCivilizationAdjective(0)
+                    break
+            newName += _get_cached_text("TXT_KEY_MOD_DCN_ALLIANCE", ())
+        else:
+            newName = GC.getPlayer(iLeader).getCivilizationAdjective(0)[0:4]
+            max_players = GC.getMAX_PC_PLAYERS()
+            for idx in xrange(max_players):
+                if idx != iLeader and GC.getPlayer(idx).getTeam() == pTeam.getID():
+                    newName += GC.getPlayer(idx).getCivilizationAdjective(0)[0:3]
+            newName += _get_cached_text("TXT_KEY_MOD_DCN_ALLIANCE", ())
 
-	# Anarchy Naming
-	if pPlayer.isAnarchy and pPlayer.getAnarchyTurns() > 1:
-		# Don't want the anarchy name to change during multiple turns of anarchy
-		if (iPlayer + pPlayer.getNumCities())%2 == 1:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_PROVISIONAL_GOV", ())%(curAdj)
-		else:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_PROVISIONAL_AUTH", ())%(curAdj)
-		return [newName, curShort, curAdj]
+        return [newName, curShort, curAdj]
 
-	if (not pPlayer.isAnarchy or pPlayer.getAnarchyTurns() < 2) and "Provisional" in curDesc:
-		if GC.getInfoTypeForString("CIVIC_MONARCHY") == eGovCivic:
-			newName = curAdj + ' ' + TRNSLTR.getText("TXT_KEY_MOD_DCN_KINGDOM", ())
-		elif GC.getInfoTypeForString("CIVIC_REPUBLIC") == eGovCivic:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REPUBLIC", ())%(curAdj)
-		else:
-			newName = curAdj + ' Nation'
-		return [newName, curShort, curAdj]
+    # Cache frequently used text keys
+    sSocRep = _get_cached_text("TXT_KEY_MOD_DCN_SOC_REP", ()).replace('%s', '').strip()
+    sPeoplesRep = _get_cached_text("TXT_KEY_MOD_DCN_PEOPLES_REP", ()).replace('%s', '').strip()
 
-	# Main naming conditions
-	if isCommunism(pPlayer):
-		if RevUtils.isCanDoElections(pPlayer) and not bNoRealElections:
-			if sSocRep in curDesc or sPeoplesRep in curDesc:
-				newName = curDesc
-			elif 50 > GAME.getSorenRandNum(100, 'Rev: Naming'):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_SOC_REP", ())%(curShort)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_PEOPLES_REP", ())%(curShort)
-		elif RevUtils.getDemocracyLevel(pPlayer)[0] == -8:
-			if TRNSLTR.getText("TXT_KEY_MOD_DCN_RUSSIAN_MATCH", ()) in curAdj:
-				curAdj = TRNSLTR.getText("TXT_KEY_MOD_DCN_SOVIET", ())
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_UNION", ())%(curAdj)
-		else:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_PEOPLES_REP", ())%(curShort)
+    # Anarchy naming
+    if pPlayer.isAnarchy and pPlayer.getAnarchyTurns() > 1:
+        if (iPlayer + pPlayer.getNumCities()) % 2 == 1:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_PROVISIONAL_GOV", ()) % curAdj
+        else:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_PROVISIONAL_AUTH", ()) % curAdj
+        return [newName, curShort, curAdj]
 
-	elif RevUtils.isCanDoElections(pPlayer) and not bNoRealElections:
-		sRepOf = TRNSLTR.getText("TXT_KEY_MOD_DCN_REPUBLIC_OF", ()).replace('%s','').strip()
-		sRepublic = TRNSLTR.getText("TXT_KEY_MOD_DCN_REPUBLIC", ())
+    # Post-anarchy naming
+    if (not pPlayer.isAnarchy or pPlayer.getAnarchyTurns() < 2) and "Provisional" in curDesc:
+        if eGovCivic == monarchy_type:
+            newName = curAdj + ' ' + _get_cached_text("TXT_KEY_MOD_DCN_KINGDOM", ())
+        elif eGovCivic == _get_info_type("CIVIC_REPUBLIC"):
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_REPUBLIC", ()) % curAdj
+        else:
+            newName = curAdj + ' Nation'
+        return [newName, curShort, curAdj]
 
-		if pPlayer.getNumCities() == 1:
-			if (curDesc.startswith(TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE", ())) or ((sRepOf in curDesc or sRepublic in curDesc) and cityString in curDesc)):
-				newName = curDesc
+    # Main naming logic
+    if isCommunism(pPlayer):
+        if RevUtils.isCanDoElections(pPlayer) and not bNoRealElections:
+            if sSocRep in curDesc or sPeoplesRep in curDesc:
+                newName = curDesc
+            elif GAME.getSorenRandNum(100, 'Rev: Naming') < 50:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_SOC_REP", ()) % curShort
+            else:
+                newName = _get_cached_text("TXT_KEY_MOD_DCN_PEOPLES_REP", ()) % curShort
+        elif RevUtils.getDemocracyLevel(pPlayer)[0] == -8:
+            if _get_cached_text("TXT_KEY_MOD_DCN_RUSSIAN_MATCH", ()) in curAdj:
+                curAdj = _get_cached_text("TXT_KEY_MOD_DCN_SOVIET", ())
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_UNION", ()) % curAdj
+        else:
+            newName = _get_cached_text("TXT_KEY_MOD_DCN_PEOPLES_REP", ()) % curShort
 
-			elif 40 > GAME.getSorenRandNum(100,'Rev: Naming'):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE_STATE", ())%(curAdj)
+    elif RevUtils.isCanDoElections(pPlayer) and not bNoRealElections:
+        # Process democratic names
+        newName = _processRepublicName(pPlayer, curDesc, curShort, curAdj,
+                                       cityString, bFederal, bConfederation)
 
-			elif cityString is None or not cityString or len(cityString) > 9:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE_REPUBLIC", ())%(curAdj)
+    elif RevUtils.getDemocracyLevel(pPlayer)[0] == -8:
+        # Process empire names
+        newName = _processEmpireName(curDesc, curShort, curAdj, bFrench)
 
-			elif cityString in curAdj or cityString in curShort:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_REPUBLIC_OF_CITY", ())%(cityString)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REPUBLIC_OF_CITY", ())%(curAdj,cityString)
-		else:
-			if (not bFederal and not bConfederation
-			and sRepublic in curDesc and sPeoplesRep not in curDesc and sSocRep not in curDesc
-			and curDesc.startswith(TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE", ()))
-			):
-				if len(curDesc) < 17 and 20 > GAME.getSorenRandNum(100,'Rev: Naming') and not TRNSLTR.getText("TXT_KEY_MOD_DCN_NEW", ()) in curDesc:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_NEW", ()) + curDesc
-				else:
-					newName = curDesc
-			elif bFederal:
-				if (pPlayer.getCivilizationType() == GC.getInfoTypeForString("CIVILIZATION_AMERICA")):
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_UNITED_STATES", ())%(curShort)
-				elif 50 > GAME.getSorenRandNum(100,'Rev: Naming'):
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_FEDERATED_STATES", ())%(curShort)
-				else:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_FEDERATION", ())%(curAdj)
-			elif bConfederation:
-				if (50 > GAME.getSorenRandNum(100,'Rev: Naming')):
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_CONFEDERATION", ())%(curAdj)
-				else:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_CONFEDERATION_STATES", ())%(curShort)
-			elif 50 > GAME.getSorenRandNum(100,'Rev: Naming'):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_REPUBLIC", ())%(curAdj)
-			elif 33 > GAME.getSorenRandNum(100,'Rev: Naming'):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_COMMONWEALTH_OF", ())%(curShort)
-			else:
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_REPUBLIC_OF", ())%(curShort)
+    else:
+        # Process kingdom names
+        newName = _processKingdomName(pPlayer, pTeam, curDesc, curShort, curAdj,
+                                      cityString, bFrench)
 
-		if (RevUtils.isFreeSpeech(pPlayer) and RevUtils.getLaborFreedom(pPlayer)[0] > 9
-		and len(newName) < 16
-		and TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE", ()) not in newName
-		and TRNSLTR.getText("TXT_KEY_MOD_DCN_NEW", ()) not in newName
-		):
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_FREE", ()) + ' ' + newName
+    # Add pacifist modifier if needed
+    if bPacifist:
+        szPacifist = _get_cached_text("TXT_KEY_MOD_DCN_PACIFIST", ())
+        if szPacifist not in newName and GAME.getSorenRandNum(100, 'Rev: Naming') < 50:
+            szPacifist = _get_cached_text("TXT_KEY_MOD_DCN_PEACEFUL", ())
 
-	elif RevUtils.getDemocracyLevel(pPlayer)[0] == -8:
+        if szPacifist not in newName:
+            if bFrench:
+                newName = newName + ' ' + szPacifist
+            else:
+                newName = szPacifist + ' ' + newName
 
-		if TRNSLTR.getText("TXT_KEY_MOD_DCN_GERMAN_MATCH", ()) in curAdj:
-			empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_REICH", ())
-		else:
-			empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_PLAIN_EMPIRE", ())
+    return [newName, curShort, curAdj]
 
-		if empString in curDesc:
-			newName = curDesc
-		elif 70 > GAME.getSorenRandNum(100,'Rev: Naming') and not TRNSLTR.getText("TXT_KEY_MOD_DCN_REICH", ()) in empString:
-			newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_BLANK_OF", ())%(empString,curShort)
-		elif bFrench:
-			newName = empString + ' ' + curAdj
-		else:
-			newName = curAdj + ' ' + empString
-	else:
-		sGreat = TRNSLTR.getText("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ()).replace('%s','').strip()
 
-		if pPlayer.getNumCities() < 3:
-			sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_PRINCIPALITY", ())
+def _processRepublicName(pPlayer, curDesc, curShort, curAdj, cityString, bFederal, bConfederation):
+    """Process republic-style names"""
+    sRepOf = _get_cached_text("TXT_KEY_MOD_DCN_REPUBLIC_OF", ()).replace('%s', '').strip()
+    sRepublic = _get_cached_text("TXT_KEY_MOD_DCN_REPUBLIC", ())
 
-		elif pPlayer.getLeaderType() in femaleLeaders:
-			sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_QUEENDOM", ())
-		else:
-			sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_KINGDOM", ())
+    numCities = pPlayer.getNumCities()
 
-		playerEra = pPlayer.getCurrentEra()
+    if numCities == 1:
+        free_text = _get_cached_text("TXT_KEY_MOD_DCN_FREE", ())
+        if (curDesc.startswith(free_text) or
+                ((sRepOf in curDesc or sRepublic in curDesc) and cityString in curDesc)):
+            return curDesc
 
-		if RevUtils.getDemocracyLevel(pPlayer)[0] == -6:
+        rand_val = GAME.getSorenRandNum(100, 'Rev: Naming')
+        if rand_val < 40:
+            return _get_cached_text("TXT_KEY_MOD_DCN_FREE_STATE", ()) % curAdj
+        elif cityString is None or not cityString or len(cityString) > 9:
+            return _get_cached_text("TXT_KEY_MOD_DCN_FREE_REPUBLIC", ()) % curAdj
+        elif cityString in curAdj or cityString in curShort:
+            return _get_cached_text("TXT_KEY_MOD_DCN_THE_REPUBLIC_OF_CITY", ()) % cityString
+        else:
+            return _get_cached_text("TXT_KEY_MOD_DCN_REPUBLIC_OF_CITY", ()) % (curAdj, cityString)
 
-			if pTeam.isAVassal():
-				sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_DUCHY", ())
-			elif TRNSLTR.getText("TXT_KEY_MOD_DCN_PERSIAN_MATCH", ()) in curAdj or TRNSLTR.getText("TXT_KEY_MOD_DCN_OTTOMAN_MATCH", ()) in curAdj or TRNSLTR.getText("TXT_KEY_MOD_DCN_SUMERIAN_MATCH", ()) in curAdj:
-				sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_SULTANATE", ())
-			elif TRNSLTR.getText("TXT_KEY_MOD_DCN_ARABIAN_MATCH", ()) in curAdj:
-				sKingdom = TRNSLTR.getText("TXT_KEY_MOD_DCN_CALIPHATE", ())
+    # Multiple cities
+    free_text = _get_cached_text("TXT_KEY_MOD_DCN_FREE", ())
+    new_text = _get_cached_text("TXT_KEY_MOD_DCN_NEW", ())
 
-			if pPlayer.getNumCities() < 4:
-				if not cityString == None and len(cityString) < 10 and len(cityString) > 0:
-					if cityString in curAdj or cityString in curShort:
-						newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_BLANK_OF_CITY", ())%(sKingdom,cityString)
-					elif bFrench:
-						newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_BLANK_OF_CITY", ())%(sKingdom,curAdj,cityString)
-					else:
-						newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_BLANK_OF_CITY", ())%(curAdj,sKingdom,cityString)
-				elif bFrench:
-					newName = sKingdom + ' ' + curAdj
-				else:
-					newName = curAdj + ' ' + sKingdom
+    if (not bFederal and not bConfederation and sRepublic in curDesc and
+            sPeoplesRep not in curDesc and sSocRep not in curDesc and
+            curDesc.startswith(free_text)):
+        if len(curDesc) < 17 and GAME.getSorenRandNum(100, 'Rev: Naming') < 20 and new_text not in curDesc:
+            return new_text + curDesc
+        else:
+            return curDesc
 
-			elif GAME.getPlayerRank(iPlayer) < GAME.countCivPlayersAlive()/7 and not pTeam.isAVassal() and (sGreat in curDesc or 40 > GAME.getSorenRandNum(100,'Rev: Naming')):
-				if bFrench:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ())%(sKingdom,curAdj)
-				else:
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ())%(curAdj,sKingdom)
-			else:
-				sOf = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_BLANK_OF", ()).replace('%s','')
-				if sKingdom in curDesc and (not sOf in curDesc or pPlayer.getNumCities < 6) and not sGreat in curDesc:
-					newName = curDesc
-				elif 50 <= GAME.getSorenRandNum(100,'Rev: Naming'):
-					newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_BLANK_OF", ())%(sKingdom,curShort)
-				elif bFrench:
-					newName = sKingdom + ' ' + curAdj
-				else:
-					newName = curAdj + ' ' + sKingdom
+    if bFederal:
+        if pPlayer.getCivilizationType() == _get_info_type("CIVILIZATION_AMERICA"):
+            return _get_cached_text("TXT_KEY_MOD_DCN_UNITED_STATES", ()) % curShort
+        elif GAME.getSorenRandNum(100, 'Rev: Naming') < 50:
+            return _get_cached_text("TXT_KEY_MOD_DCN_FEDERATED_STATES", ()) % curShort
+        else:
+            return _get_cached_text("TXT_KEY_MOD_DCN_FEDERATION", ()) % curAdj
 
-		elif RevUtils.getDemocracyLevel(pPlayer)[0] == -10 or playerEra == 0:
+    if bConfederation:
+        if GAME.getSorenRandNum(100, 'Rev: Naming') < 50:
+            return _get_cached_text("TXT_KEY_MOD_DCN_CONFEDERATION", ()) % curAdj
+        else:
+            return _get_cached_text("TXT_KEY_MOD_DCN_CONFEDERATION_STATES", ()) % curShort
 
-			empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_PLAIN_EMPIRE", ())
-			if playerEra < 2 and pPlayer.getNumCities() < 3:
-				empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_PLAIN_CITY_STATE", ())
+    # Standard republic
+    rand_val = GAME.getSorenRandNum(100, 'Rev: Naming')
+    if rand_val < 50:
+        newName = _get_cached_text("TXT_KEY_MOD_DCN_REPUBLIC", ()) % curAdj
+    elif rand_val < 67:
+        newName = _get_cached_text("TXT_KEY_MOD_DCN_THE_COMMONWEALTH_OF", ()) % curShort
+    else:
+        newName = _get_cached_text("TXT_KEY_MOD_DCN_THE_REPUBLIC_OF", ()) % curShort
 
-			if pTeam.isAVassal():
-				if 50 > GAME.getSorenRandNum(100,'Rev: Naming'):
-					empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_FIEFDOM", ())
-				elif 50 > GAME.getSorenRandNum(100,'Rev: Naming'):
-					empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_PROTECTORATE", ())
-				else:
-					empString = TRNSLTR.getText("TXT_KEY_MOD_DCN_TERRITORY", ())
+    # Add "Free" prefix if appropriate
+    if (RevUtils.isFreeSpeech(pPlayer) and RevUtils.getLaborFreedom(pPlayer)[0] > 9 and
+            len(newName) < 16 and free_text not in newName and new_text not in newName):
+        newName = free_text + ' ' + newName
 
-			if empString in curDesc and not GAME.getGameTurn() == 0:
-				newName = curDesc
-			elif 50 <= GAME.getSorenRandNum(100,'Rev: Naming'):
-				newName = TRNSLTR.getText("TXT_KEY_MOD_DCN_THE_BLANK_OF", ())%(empString,curShort)
-			elif bFrench:
-				newName = empString + ' ' + curAdj
-			else:
-				newName = curAdj + ' ' + empString
+    return newName
 
-		sHoly = TRNSLTR.getText("TXT_KEY_MOD_DCN_HOLY", ()) + ' '
-		if RevUtils.getReligiousFreedom(pPlayer)[0] < -9:
-			if len(newName) < 16 and not sHoly in newName and not sGreat in newName and not newName.startswith(TRNSLTR.getText("TXT_KEY_MOD_DCN_HOLY_HRE_MATCH", ())):
-				newName = sHoly + newName
-		elif newName.startswith(sHoly) and not origDesc.startswith(sHoly):
-			# Cut off any inappropriately saved 'Holy ' prefix
-			newName = newName[len(sHoly):]
 
-	if bPacifist:
-		szPacifist = TRNSLTR.getText("TXT_KEY_MOD_DCN_PACIFIST", ())
-		if not szPacifist in newName and 50 > GAME.getSorenRandNum(100,'Rev: Naming'):
-			szPacifist = TRNSLTR.getText("TXT_KEY_MOD_DCN_PEACEFUL", ())
+def _processEmpireName(curDesc, curShort, curAdj, bFrench):
+    """Process empire-style names"""
+    if _get_cached_text("TXT_KEY_MOD_DCN_GERMAN_MATCH", ()) in curAdj:
+        empString = _get_cached_text("TXT_KEY_MOD_DCN_REICH", ())
+    else:
+        empString = _get_cached_text("TXT_KEY_MOD_DCN_PLAIN_EMPIRE", ())
 
-		if not szPacifist in newName:
-			if bFrench:
-				newName = newName + ' ' + szPacifist
-			else:
-				newName = szPacifist + ' ' + newName
+    if empString in curDesc:
+        return curDesc
 
-	return [newName, curShort, curAdj]
+    reich_text = _get_cached_text("TXT_KEY_MOD_DCN_REICH", ())
+    if GAME.getSorenRandNum(100, 'Rev: Naming') < 70 and reich_text not in empString:
+        return _get_cached_text("TXT_KEY_MOD_DCN_THE_BLANK_OF", ()) % (empString, curShort)
+    elif bFrench:
+        return empString + ' ' + curAdj
+    else:
+        return curAdj + ' ' + empString
+
+
+def _processKingdomName(pPlayer, pTeam, curDesc, curShort, curAdj, cityString, bFrench):
+    """Process kingdom-style names"""
+    sGreat = _get_cached_text("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ()).replace('%s', '').strip()
+
+    numCities = pPlayer.getNumCities()
+
+    # Determine kingdom type
+    if numCities < 3:
+        sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_PRINCIPALITY", ())
+    elif pPlayer.getLeaderType() in femaleLeaders:
+        sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_QUEENDOM", ())
+    else:
+        sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_KINGDOM", ())
+
+    playerEra = pPlayer.getCurrentEra()
+
+    if RevUtils.getDemocracyLevel(pPlayer)[0] == -6:
+        if pTeam.isAVassal():
+            sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_DUCHY", ())
+        else:
+            # Check for specific civilizations
+            persian = _get_cached_text("TXT_KEY_MOD_DCN_PERSIAN_MATCH", ())
+            ottoman = _get_cached_text("TXT_KEY_MOD_DCN_OTTOMAN_MATCH", ())
+            sumerian = _get_cached_text("TXT_KEY_MOD_DCN_SUMERIAN_MATCH", ())
+            arabian = _get_cached_text("TXT_KEY_MOD_DCN_ARABIAN_MATCH", ())
+
+            if persian in curAdj or ottoman in curAdj or sumerian in curAdj:
+                sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_SULTANATE", ())
+            elif arabian in curAdj:
+                sKingdom = _get_cached_text("TXT_KEY_MOD_DCN_CALIPHATE", ())
+
+        if numCities < 4:
+            if cityString is not None and 0 < len(cityString) < 10:
+                if cityString in curAdj or cityString in curShort:
+                    return _get_cached_text("TXT_KEY_MOD_DCN_THE_BLANK_OF_CITY", ()) % (sKingdom, cityString)
+                elif bFrench:
+                    return _get_cached_text("TXT_KEY_MOD_DCN_BLANK_OF_CITY", ()) % (sKingdom, curAdj, cityString)
+                else:
+                    return _get_cached_text("TXT_KEY_MOD_DCN_BLANK_OF_CITY", ()) % (curAdj, sKingdom, cityString)
+            elif bFrench:
+                return sKingdom + ' ' + curAdj
+            else:
+                return curAdj + ' ' + sKingdom
+
+        # Check for great kingdom
+        playerRank = GAME.getPlayerRank(pPlayer.getID())
+        totalPlayers = GAME.countCivPlayersAlive()
+
+        if playerRank < totalPlayers / 7 and not pTeam.isAVassal():
+            if sGreat in curDesc or GAME.getSorenRandNum(100, 'Rev: Naming') < 40:
+                if bFrench:
+                    return _get_cached_text("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ()) % (sKingdom, curAdj)
+                else:
+                    return _get_cached_text("TXT_KEY_MOD_DCN_GREAT_KINGDOM", ()) % (curAdj, sKingdom)
+
+        # Standard kingdom
+        sOf = _get_cached_text("TXT_KEY_MOD_DCN_THE_BLANK_OF", ()).replace('%s', '')
+        if sKingdom in curDesc and (sOf not in curDesc or numCities < 6) and sGreat not in curDesc:
+            return curDesc
+        elif GAME.getSorenRandNum(100, 'Rev: Naming') >= 50:
+            return _get_cached_text("TXT_KEY_MOD_DCN_THE_BLANK_OF", ()) % (sKingdom, curShort)
+        elif bFrench:
+            return sKingdom + ' ' + curAdj
+        else:
+            return curAdj + ' ' + sKingdom
+
+    elif RevUtils.getDemocracyLevel(pPlayer)[0] == -10 or playerEra == 0:
+        # Very early or despotic
+        empString = _get_cached_text("TXT_KEY_MOD_DCN_PLAIN_EMPIRE", ())
+        if playerEra < 2 and numCities < 3:
+            empString = _get_cached_text("TXT_KEY_MOD_DCN_PLAIN_CITY_STATE", ())
+
+        if pTeam.isAVassal():
+            rand_val = GAME.getSorenRandNum(100, 'Rev: Naming')
+            if rand_val < 50:
+                empString = _get_cached_text("TXT_KEY_MOD_DCN_FIEFDOM", ())
+            elif rand_val < 75:
+                empString = _get_cached_text("TXT_KEY_MOD_DCN_PROTECTORATE", ())
+            else:
+                empString = _get_cached_text("TXT_KEY_MOD_DCN_TERRITORY", ())
+
+        if empString in curDesc and GAME.getGameTurn() != 0:
+            return curDesc
+        elif GAME.getSorenRandNum(100, 'Rev: Naming') >= 50:
+            return _get_cached_text("TXT_KEY_MOD_DCN_THE_BLANK_OF", ()) % (empString, curShort)
+        elif bFrench:
+            return empString + ' ' + curAdj
+        else:
+            return curAdj + ' ' + empString
+
+    # Add holy modifier if needed
+    sHoly = _get_cached_text("TXT_KEY_MOD_DCN_HOLY", ()) + ' '
+    holy_hre = _get_cached_text("TXT_KEY_MOD_DCN_HOLY_HRE_MATCH", ())
+
+    if RevUtils.getReligiousFreedom(pPlayer)[0] < -9:
+        if len(newName) < 16 and sHoly not in newName and sGreat not in newName and not newName.startswith(holy_hre):
+            newName = sHoly + newName
+    elif newName.startswith(sHoly) and not origDesc.startswith(sHoly):
+        newName = newName[len(sHoly):]
+
+    return newName
 
 
 def resetName(iPlayer):
-	pPlayer = GC.getPlayer(iPlayer)
-	civInfo = GC.getCivilizationInfo(pPlayer.getCivilizationType())
-	origAdj = civInfo.getAdjective(0)
-	origDesc = civInfo.getDescription()
-	origShort = civInfo.getShortDescription(0)
-
-	pPlayer.setCivName(origDesc, origShort, origAdj)
+    """Reset player name to original civilization name"""
+    pPlayer = GC.getPlayer(iPlayer)
+    civType = pPlayer.getCivilizationType()
+    if civType >= 0:
+        civInfo = GC.getCivilizationInfo(civType)
+        origAdj = civInfo.getAdjective(0)
+        origDesc = civInfo.getDescription()
+        origShort = civInfo.getShortDescription(0)
+        pPlayer.setCivName(origDesc, origShort, origAdj)
 
 
 def isCommunism(pPlayer):
+    """Check if player has communism civic"""
+    if pPlayer is None or not pPlayer.isAlive():
+        return False
 
-	if pPlayer is None or not pPlayer.isAlive():
-		return False
+    num_civics = GC.getNumCivicInfos()
+    for i in xrange(num_civics):
+        civicInfo = GC.getCivicInfo(i)
+        if civicInfo.isCommunism() and pPlayer.isCivic(i):
+            return True
 
-	for i in xrange(GC.getNumCivicInfos()):
-
-		if GC.getCivicInfo(i).isCommunism() and pPlayer.isCivic(i):
-			return True
-
-	return False
+    return False
