@@ -7259,6 +7259,12 @@ bool CvGame::testVictory(VictoryTypes eVictory, TeamTypes eTeam, bool* pbEndScor
 		return false;
 	}
 
+	//Calvitix : in duel, the initial score can be at the beginning very buggy
+	if (getGameTurn() < 100)
+	{
+		return false;
+	}
+
 	bool bValid = true;
 	// Time Victory
 	if (bValid && GC.getVictoryInfo(eVictory).isEndScore())
@@ -11680,7 +11686,7 @@ bool CvGame::isAutoRaze(const CvCity* city, const PlayerTypes eNewOwner, bool bC
 
 	if (isOption(GAMEOPTION_CHALLENGE_ONE_CITY)
 	|| getMaxCityElimination() > 0
-	|| bConquest && city->getPopulation() == 1)
+	|| (bConquest && city->getPopulation() == 1 && city->getNumWorldWonders() == 0))
 	{
 		return true;
 	}
