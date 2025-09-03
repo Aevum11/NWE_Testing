@@ -19,12 +19,22 @@ class ScreenInput:
         if args_len < 15:
             raise ValueError("argsList must contain at least 15 elements")
 
-        # Direct tuple unpacking is more memory-efficient than individual assignments
-        # Reduces temporary variable creation and assignment overhead
-        (self.eNotifyCode, self.iData, self.uiFlags, self.iItemID,
-         self.ePythonFileEnum, self.szFunctionName, self.bShift, self.bCtrl,
-         self.bAlt, self.iMouseX, self.iMouseY, self.iButtonType,
-         self.iData1, self.iData2, self.bOption) = argsList[:15]
+        # Assign directly without slicing (avoids temporary list allocation)
+        self.eNotifyCode = argsList[0]
+        self.iData = argsList[1]
+        self.uiFlags = argsList[2]
+        self.iItemID = argsList[3]
+        self.ePythonFileEnum = argsList[4]
+        self.szFunctionName = argsList[5]
+        self.bShift = argsList[6]
+        self.bCtrl = argsList[7]
+        self.bAlt = argsList[8]
+        self.iMouseX = argsList[9]
+        self.iMouseY = argsList[10]
+        self.iButtonType = argsList[11]
+        self.iData1 = argsList[12]
+        self.iData2 = argsList[13]
+        self.bOption = argsList[14]
 
     # NotifyCode
     def getNotifyCode(self):
