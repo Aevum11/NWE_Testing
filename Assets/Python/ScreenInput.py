@@ -16,8 +16,8 @@ class ScreenInput:
     def __init__(self, argsList):
         # Efficient length validation
         args_len = len(argsList)
-        if args_len < 15:
-            raise ValueError("argsList must contain at least 15 elements")
+        if args_len != 15:
+            raise ValueError("argsList must contain exactly 15 elements (got {0})".format(args_len))
 
         # Assign directly without slicing (avoids temporary list allocation)
         self.eNotifyCode = argsList[0]
@@ -35,6 +35,15 @@ class ScreenInput:
         self.iData1 = argsList[12]
         self.iData2 = argsList[13]
         self.bOption = argsList[14]
+
+    # For Debugging
+    def __repr__(self):
+        return ("ScreenInput(eNotifyCode={!r}, iData={!r}, uiFlags={!r}, iItemID={!r}, "
+                "ePythonFileEnum={!r}, szFunctionName={!r}, bShift={!r}, bCtrl={!r}, bAlt={!r}, "
+                "iMouseX={!r}, iMouseY={!r}, iButtonType={!r}, iData1={!r}, iData2={!r}, bOption={!r})"
+                .format(self.eNotifyCode, self.iData, self.uiFlags, self.iItemID,
+                        self.ePythonFileEnum, self.szFunctionName, self.bShift, self.bCtrl, self.bAlt,
+                        self.iMouseX, self.iMouseY, self.iButtonType, self.iData1, self.iData2, self.bOption))
 
     # NotifyCode
     def getNotifyCode(self):
