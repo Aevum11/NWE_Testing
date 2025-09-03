@@ -13,10 +13,19 @@ def writeLog():
     GAME = GC.getGame()
     iActivePlayer = GAME.getActivePlayer()
 
-    # Convert name once and reuse
-    szPlayerName = TextUtil.convertToStr(GC.getActivePlayer().getName())
-    szFileName = SP.userDir + "\\Logs\\%s - Player %d - Turn %d OOSLog.txt" % (szPlayerName, iActivePlayer,
-                                                                               GAME.getGameTurn())
+    # Convert name once and reuse; derive from iActivePlayer to avoid API ambiguity
+    pActive = GC.getPlayer(iActivePlayer)
+    szPlayerName = TextUtil.convertToStr(pActive.getName())
+    # Filesystem-safe filename and portable path
+    safeName = ''.join(c if (c.isalnum() or c in (' ', '-', '_', '.')) else '_' for c in szPlayerName)
+    log_dir = os.path.join(SP.userDir, "Logs")
+    if not os.path.isdir(log_dir):
+        try:
+            os.makedirs(log_dir)
+        except OSError:
+            pass  # best effort
+    szFileName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (
+        safeName, iActivePlayer, GAME.getGameTurn()))
 
     # Use list to buffer output - more memory efficient than string concatenation
     output = []
@@ -38,8 +47,8 @@ def writeLog():
         output.append("\n")
 
         # Use direct formatting to avoid temporary strings
-        output.append("Last MapRand Value: %d\n" % GAME.getMapRand().getSeed())
-        output.append("Last SorenRand Value: %d\n" % GAME.getSorenRand().getSeed())
+        output.append("MapRand Seed: %d\n" % GAME.getMapRand().getSeed())
+        output.append("SorenRand Seed: %d\n" % GAME.getSorenRand().getSeed())
         output.append("Total num cities: %d\n" % GAME.getNumCities())
         output.append("Total population: %d\n" % GAME.getTotalPopulation())
         output.append("Total Deals: %d\n" % GAME.getNumDeals())
@@ -150,7 +159,7 @@ def writeLog():
                     output.append("Food: %d\n" % pCity.getFood())
                     pCity, i = pPlayer.nextCity(i, False)
             else:
-                output.append("\n\nCity Info:\n----------\nNo Cities")
+                output.append("\n\nCity Info:\n----------\nNo Cities\n")
 
             # Bonus info section
             output.append("\n\nBonus Info:\n-----------\n")
@@ -172,7 +181,7 @@ def writeLog():
             output.append("\n\nBuilding Info:\n--------------------\n")
             for iBuilding in xrange(GC.getNumBuildingInfos()):
                 buildingDesc = TextUtil.convertToStr(GC.getBuildingInfo(iBuilding).getDescription())
-                output.append("Player %d, %s, Building class count plus making: %d\n" % (iPlayer, buildingDesc,
+                output.append("Player %d, %s, Building count plus making: %d\n" % (iPlayer, buildingDesc,
                                                                                          pPlayer.getBuildingCountPlusMaking(
                                                                                              iBuilding)))
 
@@ -180,7 +189,7 @@ def writeLog():
             output.append("\n\nUnit Class Info:\n--------------------\n")
             for iUnit in xrange(GC.getNumUnitInfos()):
                 unitDesc = TextUtil.convertToStr(GC.getUnitInfo(iUnit).getDescription())
-                output.append("Player %d, %s, Unit class count plus training: %d\n" % (iPlayer, unitDesc,
+                output.append("Player %d, %s, Unit count plus making: %d\n" % (iPlayer, unitDesc,
                                                                                        pPlayer.getUnitCountPlusMaking(
                                                                                            iUnit)))
 
@@ -263,20 +272,20 @@ def writeLog():
                         output.append("UnitCombats:\n")
                         output.extend(unitCombats)
             else:
-                output.append("No Units")
+                output.append("No Units\n")
 
             # Space at end of player's info
             output.append("\n\n")
 
             # Force garbage collection after each player to free memory
             if iPlayer % 4 == 3:  # Every 4 players
-                gc.collect(0)  # Collect youngest generation only for speed
+                gc.collect()
 
         # Write all data at once - more efficient than multiple writes
-        pFile = open(szFileName, "w")
+        pFile = open(szFileName, "wb")
         try:
-            # Join all strings efficiently
-            pFile.write(''.join(output))
+            # Join and encode once
+            pFile.write((''.join(output)).encode('utf-8', 'replace'))
         finally:
             pFile.close()
 
