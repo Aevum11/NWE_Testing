@@ -3,7 +3,7 @@
 ## Memory-optimized version for 32-bit Caveman2Cosmos mod
 
 # Class to decipher and make screen input easy to read...
-class ScreenInput:
+class ScreenInput(object):
     # __slots__ eliminates __dict__ overhead, saving ~100-200 bytes per instance
     # Critical optimization for 32-bit memory constraints in games
     __slots__ = (
@@ -17,33 +17,20 @@ class ScreenInput:
         # Efficient length validation
         args_len = len(argsList)
         if args_len != 15:
-            raise ValueError("argsList must contain exactly 15 elements (got {0})".format(args_len))
+            raise ValueError("argsList must contain exactly 15 elements (got %d)" % args_len)
 
-        # Assign directly without slicing (avoids temporary list allocation)
-        self.eNotifyCode = argsList[0]
-        self.iData = argsList[1]
-        self.uiFlags = argsList[2]
-        self.iItemID = argsList[3]
-        self.ePythonFileEnum = argsList[4]
-        self.szFunctionName = argsList[5]
-        self.bShift = argsList[6]
-        self.bCtrl = argsList[7]
-        self.bAlt = argsList[8]
-        self.iMouseX = argsList[9]
-        self.iMouseY = argsList[10]
-        self.iButtonType = argsList[11]
-        self.iData1 = argsList[12]
-        self.iData2 = argsList[13]
-        self.bOption = argsList[14]
+        (self.eNotifyCode, self.iData, self.uiFlags, self.iItemID, self.ePythonFileEnum,
+         self.szFunctionName, self.bShift, self.bCtrl, self.bAlt, self.iMouseX, self.iMouseY,
+         self.iButtonType, self.iData1, self.iData2, self.bOption) = argsList
 
     # For Debugging
     def __repr__(self):
-        return ("ScreenInput(eNotifyCode={!r}, iData={!r}, uiFlags={!r}, iItemID={!r}, "
-                "ePythonFileEnum={!r}, szFunctionName={!r}, bShift={!r}, bCtrl={!r}, bAlt={!r}, "
-                "iMouseX={!r}, iMouseY={!r}, iButtonType={!r}, iData1={!r}, iData2={!r}, bOption={!r})"
-                .format(self.eNotifyCode, self.iData, self.uiFlags, self.iItemID,
-                        self.ePythonFileEnum, self.szFunctionName, self.bShift, self.bCtrl, self.bAlt,
-                        self.iMouseX, self.iMouseY, self.iButtonType, self.iData1, self.iData2, self.bOption))
+        return ("ScreenInput(eNotifyCode=%r, iData=%r, uiFlags=%r, iItemID=%r, "
+                "ePythonFileEnum=%r, szFunctionName=%r, bShift=%r, bCtrl=%r, bAlt=%r, "
+                "iMouseX=%r, iMouseY=%r, iButtonType=%r, iData1=%r, iData2=%r, bOption=%r)") % (
+            self.eNotifyCode, self.iData, self.uiFlags, self.iItemID,
+            self.ePythonFileEnum, self.szFunctionName, self.bShift, self.bCtrl, self.bAlt,
+            self.iMouseX, self.iMouseY, self.iButtonType, self.iData1, self.iData2, self.bOption)
 
     # NotifyCode
     def getNotifyCode(self):
