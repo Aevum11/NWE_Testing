@@ -1,85 +1,93 @@
 ## Sid Meier's Civilization 4
 ## Copyright Firaxis Games 2005
+## Memory-optimized version for 32-bit Caveman2Cosmos mod
 
 # Class to decipher and make screen input easy to read...
-class ScreenInput:
+class ScreenInput(object):
+    # __slots__ eliminates __dict__ overhead, saving ~100-200 bytes per instance
+    # Critical optimization for 32-bit memory constraints in games
+    __slots__ = (
+        'eNotifyCode', 'iData', 'uiFlags', 'iItemID', 'ePythonFileEnum',
+        'szFunctionName', 'bShift', 'bCtrl', 'bAlt', 'iMouseX', 'iMouseY',
+        'iButtonType', 'iData1', 'iData2', 'bOption'
+    )
 
-	# Init call...
-	def __init__ (self, argsList):
-		if len(argsList) < 15:
-			raise ValueError("argsList must contain at least 15 elements")
-		self.eNotifyCode = argsList[0]
-		self.iData = argsList[1]
-		self.uiFlags = argsList[2]
-		self.iItemID = argsList[3]
-		self.ePythonFileEnum = argsList[4]
-		self.szFunctionName = argsList[5]
-		self.bShift = argsList[6]
-		self.bCtrl = argsList[7]
-		self.bAlt = argsList[8]
-		self.iMouseX = argsList[9]
-		self.iMouseY = argsList[10]
-		self.iButtonType = argsList[11]
-		self.iData1 = argsList[12]
-		self.iData2 = argsList[13]
-		self.bOption = argsList[14]
+    # Init call - optimized for memory efficiency
+    def __init__(self, argsList):
+        # Efficient length validation
+        args_len = len(argsList)
+        if args_len != 15:
+            raise ValueError("argsList must contain exactly 15 elements (got %d)" % args_len)
 
-	# NotifyCode
-	def getNotifyCode (self):
-		return self.eNotifyCode
+        (self.eNotifyCode, self.iData, self.uiFlags, self.iItemID, self.ePythonFileEnum,
+         self.szFunctionName, self.bShift, self.bCtrl, self.bAlt, self.iMouseX, self.iMouseY,
+         self.iButtonType, self.iData1, self.iData2, self.bOption) = argsList
 
-	# Data
-	def getData (self):
-		return self.iData
+    # For Debugging
+    def __repr__(self):
+        return ("ScreenInput(eNotifyCode=%r, iData=%r, uiFlags=%r, iItemID=%r, "
+                "ePythonFileEnum=%r, szFunctionName=%r, bShift=%r, bCtrl=%r, bAlt=%r, "
+                "iMouseX=%r, iMouseY=%r, iButtonType=%r, iData1=%r, iData2=%r, bOption=%r)") % (
+            self.eNotifyCode, self.iData, self.uiFlags, self.iItemID,
+            self.ePythonFileEnum, self.szFunctionName, self.bShift, self.bCtrl, self.bAlt,
+            self.iMouseX, self.iMouseY, self.iButtonType, self.iData1, self.iData2, self.bOption)
 
-	# Flags
-	def getFlags (self):
-		return self.uiFlags
+    # NotifyCode
+    def getNotifyCode(self):
+        return self.eNotifyCode
 
-	# Item ID
-	def getID (self):
-		return self.iItemID
+    # Data
+    def getData(self):
+        return self.iData
 
-	# Python File
-	def getPythonFile (self):
-		return self.ePythonFileEnum
+    # Flags
+    def getFlags(self):
+        return self.uiFlags
 
-	# Function Name...
-	def getFunctionName (self):
-		return self.szFunctionName
+    # Item ID
+    def getID(self):
+        return self.iItemID
 
-	# Shift Key Down
-	def isShiftKeyDown (self):
-		return self.bShift
+    # Python File
+    def getPythonFile(self):
+        return self.ePythonFileEnum
 
-	# Ctrl Key Down
-	def isCtrlKeyDown (self):
-		return self.bCtrl
+    # Function Name...
+    def getFunctionName(self):
+        return self.szFunctionName
 
-	# Alt Key Down
-	def isAltKeyDown (self):
-		return self.bAlt
+    # Shift Key Down
+    def isShiftKeyDown(self):
+        return self.bShift
 
-	# X location of the mouse cursor
-	def getMouseX (self):
-		return self.iMouseX
+    # Ctrl Key Down
+    def isCtrlKeyDown(self):
+        return self.bCtrl
 
-	# Y location of the mouse cursor
-	def getMouseY (self):
-		return self.iMouseY
+    # Alt Key Down
+    def isAltKeyDown(self):
+        return self.bAlt
 
-	# WidgetType
-	def getButtonType (self):
-		return self.iButtonType
+    # X location of the mouse cursor
+    def getMouseX(self):
+        return self.iMouseX
 
-	# Widget Data 1
-	def getData1 (self):
-		return self.iData1
+    # Y location of the mouse cursor
+    def getMouseY(self):
+        return self.iMouseY
 
-	# Widget Data 2
-	def getData2 (self):
-		return self.iData2
+    # WidgetType
+    def getButtonType(self):
+        return self.iButtonType
 
-	# Widget Option
-	def getOption (self):
-		return self.bOption
+    # Widget Data 1
+    def getData1(self):
+        return self.iData1
+
+    # Widget Data 2
+    def getData2(self):
+        return self.iData2
+
+    # Widget Option
+    def getOption(self):
+        return self.bOption
