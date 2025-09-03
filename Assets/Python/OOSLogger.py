@@ -7,6 +7,7 @@ def writeLog():
     import SystemPaths as SP
     import TextUtil
     import gc
+    import os
 
     GC = CyGlobalContext()
     MAP = GC.getMap()
@@ -22,8 +23,10 @@ def writeLog():
     if not os.path.isdir(log_dir):
         try:
             os.makedirs(log_dir)
-        except OSError:
-            pass  # best effort
+        except OSError as e:
+            import errno
+            if e.errno != errno.EEXIST:
+                raise
     szFileName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (
         safeName, iActivePlayer, GAME.getGameTurn()))
 
@@ -284,8 +287,8 @@ def writeLog():
         # Write all data at once - more efficient than multiple writes
         pFile = open(szFileName, "wb")
         try:
-            # Join and encode once
-            pFile.write((''.join(output)).encode('utf-8', 'replace'))
+            for s in output:
+                pFile.write(s.encode('utf-8', 'replace'))
         finally:
             pFile.close()
 
