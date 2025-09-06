@@ -32,8 +32,28 @@ def writeLog():
         safeName, iActivePlayer, GAME.getGameTurn()))
 
     pFile = open(szFileName, "wb")
-    w = lambda s: pFile.write(s.encode('utf-8', 'replace'))
-    try:
+
+    def w(s):
+        try:
+            # unicode -> utf-8
+            if isinstance(s, unicode):
+                encoded = s.encode('utf-8', 'replace')
+                pFile.write(encoded)
+                hybrid_gc.bytes_written += len(encoded)
+            else:
+                # 8-bit str -> decode best-effort, then re-encode
+                try:
+                    u = s.decode('utf-8')
+                except Exception:
+                    u = s.decode('latin-1', 'replace')
+                encoded = u.encode('utf-8', 'replace')
+                pFile.write(encoded)
+                hybrid_gc.bytes_written += len(encoded)
+        except Exception:
+            # Last-resort fallback
+            fallback = str(s)
+            pFile.write(fallback)
+            hybrid_gc.bytes_written += len(fallback)
 
     class HybridGC:
         def __init__(self):
@@ -41,8 +61,9 @@ def writeLog():
             self.base_interval = 6  # Increased from 4
             self.min_interval = 2
             self.pressure_factor = 1.3
+            self.bytes_written = 0  # Track approximate buffer size
 
-        def should_collect(self, player_index, output_buffer):
+        def should_collect(self, player_index):
             """Multi-factor decision for garbage collection"""
             # Never collect too frequently
             if (player_index - self.last_gc_player) < self.min_interval:
@@ -56,11 +77,8 @@ def writeLog():
             thresholds = gc.get_threshold()
             pressure_trigger = counts[0] > (thresholds[0] * self.pressure_factor)
 
-            # Buffer size check (estimate)
-            buffer_samples = output_buffer[-10:] if len(output_buffer) >= 10 else output_buffer
-            avg_string_size = sum(len(s) for s in buffer_samples) / max(len(buffer_samples), 1)
-            estimated_buffer_size = avg_string_size * len(output_buffer)
-            buffer_trigger = estimated_buffer_size > 100000  # 100KB threshold
+            # Buffer size check using tracked bytes
+            buffer_trigger = self.bytes_written > 100000  # 100KB threshold
 
             return interval_trigger or pressure_trigger or buffer_trigger
 
@@ -77,7 +95,15 @@ def writeLog():
                 total_collected = collected_gen0
 
             self.last_gc_player = player_index
+            # Reset byte counter after GC
+            self.bytes_written = 0
             return total_collected
+
+        def track_write(self, text):
+            """Track approximate bytes written"""
+            self.bytes_written += len(text.encode('utf-8', 'replace'))
+
+        # Create enhanced writer that tracks buffer size
 
     # Initialize the garbage collector
     hybrid_gc = HybridGC()
@@ -124,7 +150,8 @@ def writeLog():
                 w("NPC player %d: %s\n" % (iPlayer, playerName))
             try:
                 from CvPythonExtensions import CyTranslator
-                civ = CyTranslator().getText(pPlayer.getCivilizationDescriptionKey(), ())
+                _translator = _translator if '._translator' in globals() else CyTranslator()
+                civ = _translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
             except Exception:
                 civ = TextUtil.convertToStr(pPlayer.getCivilizationDescriptionKey())
             w("  Civilization: %s\n" % civ)
@@ -159,9 +186,9 @@ def writeLog():
                     except Exception:
                         # Final fallback to key conversion
                         stateReligionStr = TextUtil.convertToStr(stateReligionKey)
-                output.append("Player %d State Religion: %s\n" % (iPlayer, stateReligionStr))
+                w("Player %d State Religion: %s\n" % (iPlayer, stateReligionStr))
             else:
-                output.append("Player %d State Religion: None\n" % iPlayer)
+                w("Player %d State Religion: None\n" % iPlayer)
 
             w("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
 
@@ -351,11 +378,17 @@ def writeLog():
             w("\n\n")
 
             # Intelligent garbage collection based on memory pressure
-            if hybrid_gc.should_collect(iPlayer, output):
+            if hybrid_gc.should_collect(iPlayer):
                 collected = hybrid_gc.collect(iPlayer)
-
-                # Close the file (already written during streaming)
-                pFile.close()
+                # Keep file open; just flush to bound buffers
+                try:
+                    pFile.flush()
+                    try:
+                        os.fsync(pFile.fileno())
+                    except OSError:
+                        pass
+                except Exception:
+                    pass
 
     finally:
     # Close file if it was opened
