@@ -19,6 +19,8 @@ def writeLog():
     szPlayerName = TextUtil.convertToStr(pActive.getName())
     # Filesystem-safe filename and portable path
     safeName = ''.join(c if (c.isalnum() or c in (' ', '-', '_', '.')) else '_' for c in szPlayerName)
+    if len(safeName) > 60:
+        safeName = safeName[:60].rstrip()
     log_dir = os.path.join(SP.userDir, "Logs")
     if not os.path.isdir(log_dir):
         try:
@@ -35,26 +37,19 @@ def writeLog():
 
     def w(s):
         try:
-            # unicode -> utf-8
+            if not isinstance(s, (str, unicode)):
+                s = unicode(s)
             if isinstance(s, unicode):
                 encoded = s.encode('utf-8', 'replace')
-                pFile.write(encoded)
-                hybrid_gc.bytes_written += len(encoded)
             else:
-                # 8-bit str -> decode best-effort, then re-encode
                 try:
-                    u = s.decode('utf-8')
+                    encoded = s.decode('utf-8').encode('utf-8', 'replace')
                 except Exception:
-                    u = s.decode('latin-1', 'replace')
-                encoded = u.encode('utf-8', 'replace')
-                pFile.write(encoded)
-                hybrid_gc.bytes_written += len(encoded)
+                    encoded = s.decode('latin-1', 'replace').encode('utf-8', 'replace')
+            pFile.write(encoded)
+            hybrid_gc.bytes_written += len(encoded)
         except Exception:
-            # Last-resort fallback
-            try:
-                fallback = unicode(s).encode('utf-8', 'replace')
-            except Exception:
-                fallback = '[unprintable]\n'
+            fallback = '[unprintable]\n'
             pFile.write(fallback)
             hybrid_gc.bytes_written += len(fallback)
 
@@ -76,9 +71,12 @@ def writeLog():
             interval_trigger = (player_index % self.base_interval) == 0
 
             # Memory pressure check
-            counts = gc.get_count()
-            thresholds = gc.get_threshold()
-            pressure_trigger = counts[0] > (thresholds[0] * self.pressure_factor)
+            try:
+                counts = gc.get_count()
+                thresholds = gc.get_threshold()
+                pressure_trigger = counts and (counts[0] > (thresholds[0] * self.pressure_factor))
+            except Exception:
+                pressure_trigger = False
 
             # Buffer size check using tracked bytes
             buffer_trigger = self.bytes_written > 100000  # 100KB threshold
@@ -86,27 +84,13 @@ def writeLog():
             return interval_trigger or pressure_trigger or buffer_trigger
 
         def collect(self, player_index):
-            """Perform targeted collection"""
-            # Collect generation 0 first (most efficient for our use case)
-            collected_gen0 = gc.collect()
-
-            # If that didn't free much, do a full collection
-            if collected_gen0 < 100:  # Adjust threshold as needed
-                collected_full = gc.collect()
-                total_collected = collected_gen0 + collected_full
-            else:
-                total_collected = collected_gen0
+            """Perform garbage collection when needed"""
+            collected = gc.collect()
 
             self.last_gc_player = player_index
             # Reset byte counter after GC
             self.bytes_written = 0
-            return total_collected
-
-        def track_write(self, text):
-            """Track approximate bytes written"""
-            self.bytes_written += len(text.encode('utf-8', 'replace'))
-
-        # Create enhanced writer that tracks buffer size
+            return collected
 
     # Initialize the garbage collector
     hybrid_gc = HybridGC()
@@ -151,14 +135,14 @@ def writeLog():
                 w("Human player %d: %s\n" % (iPlayer, playerName))
             else:
                 w("NPC player %d: %s\n" % (iPlayer, playerName))
+            # Lazily cache translator at module scope; use a local alias for clarity
+            global _translator
             try:
-                # Reuse a cached translator if available (Python 2.4-safe)
-                try:
-                    _translator  # noqa: F821 - presence check
-                except NameError:
-                    from CvPythonExtensions import CyTranslator
-                    _translator = CyTranslator()
-                civ = _translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
+                translator = _translator
+            except NameError:
+                from CvPythonExtensions import CyTranslator
+                _translator = translator = CyTranslator()
+            civ = translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
             except Exception:
                 civ = TextUtil.convertToStr(pPlayer.getCivilizationDescriptionKey())
             w("  Civilization: %s\n" % civ)
@@ -392,10 +376,10 @@ def writeLog():
                     pFile.flush()
                     try:
                         os.fsync(pFile.fileno())
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+                    except Exception, _e:
+                        w("! fsync failed: %s\n" % _e)
+                except Exception, _e:
+                    w("! flush failed: %s\n" % _e)
 
     finally:
         # Close file if it was opened
