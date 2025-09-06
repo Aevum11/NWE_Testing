@@ -23,7 +23,7 @@ def writeLog():
     if not os.path.isdir(log_dir):
         try:
             os.makedirs(log_dir)
-        except OSError as e:
+        except OSError, e:
             import errno
             # Only ignore when the path now exists and is a directory (race with another creator).
             if not (e.errno == errno.EEXIST and os.path.isdir(log_dir)):
@@ -51,7 +51,10 @@ def writeLog():
                 hybrid_gc.bytes_written += len(encoded)
         except Exception:
             # Last-resort fallback
-            fallback = str(s)
+            try:
+                fallback = unicode(s).encode('utf-8', 'replace')
+            except Exception:
+                fallback = '[unprintable]\n'
             pFile.write(fallback)
             hybrid_gc.bytes_written += len(fallback)
 
@@ -85,7 +88,7 @@ def writeLog():
         def collect(self, player_index):
             """Perform targeted collection"""
             # Collect generation 0 first (most efficient for our use case)
-            collected_gen0 = gc.collect(0)
+            collected_gen0 = gc.collect()
 
             # If that didn't free much, do a full collection
             if collected_gen0 < 100:  # Adjust threshold as needed
@@ -149,8 +152,12 @@ def writeLog():
             else:
                 w("NPC player %d: %s\n" % (iPlayer, playerName))
             try:
-                from CvPythonExtensions import CyTranslator
-                _translator = _translator if '._translator' in globals() else CyTranslator()
+                # Reuse a cached translator if available (Python 2.4-safe)
+                try:
+                    _translator  # noqa: F821 - presence check
+                except NameError:
+                    from CvPythonExtensions import CyTranslator
+                    _translator = CyTranslator()
                 civ = _translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
             except Exception:
                 civ = TextUtil.convertToStr(pPlayer.getCivilizationDescriptionKey())
@@ -385,15 +392,15 @@ def writeLog():
                     pFile.flush()
                     try:
                         os.fsync(pFile.fileno())
-                    except OSError:
+                    except Exception:
                         pass
                 except Exception:
                     pass
 
     finally:
-    # Close file if it was opened
-    if 'pFile' in locals() and not pFile.closed:
-        pFile.close()
-    # Restore original language
-    GAME.setCurrentLanguage(iLanguage)
-    gc.collect()
+        # Close file if it was opened
+        if 'pFile' in locals() and not pFile.closed:
+            pFile.close()
+        # Restore original language
+        GAME.setCurrentLanguage(iLanguage)
+        gc.collect()
