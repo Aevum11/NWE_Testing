@@ -25,7 +25,8 @@ def writeLog():
             os.makedirs(log_dir)
         except OSError as e:
             import errno
-            if e.errno != errno.EEXIST:
+            # Only ignore when the path now exists and is a directory (race with another creator).
+            if not (e.errno == errno.EEXIST and os.path.isdir(log_dir)):
                 raise
     szFileName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (
         safeName, iActivePlayer, GAME.getGameTurn()))
@@ -264,7 +265,7 @@ def writeLog():
             # UnitAI types info section
             w("\n\nUnitAI Types Info:\n------------------\n")
             for iUnitAIType in xrange(int(UnitAITypes.NUM_UNITAI_TYPES)):
-                unitAIType = GC.getUnitAIInfo(iUnitAIType).getType()
+                unitAIType = TextUtil.convertToStr(GC.getUnitAIInfo(iUnitAIType).getType())
                 w("Player %d, %s, Unit AI Type count: %d\n" % (iPlayer, unitAIType, pPlayer.AI_totalUnitAIs(
                     UnitAITypes(iUnitAIType))))
 
