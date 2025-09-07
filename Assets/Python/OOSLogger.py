@@ -69,8 +69,6 @@ def writeLog():
     log_name = u"%s - Player %d - Turn %d OOSLog.txt" % (safeName, iActivePlayer, GAME.getGameTurn())
     szFileName = os.path.join(log_dir, log_name)
 
-    pFile = open(szFileName, "wb")
-
     def w(s):
         try:
             if not isinstance(s, (str, unicode)):
@@ -146,24 +144,25 @@ def writeLog():
     # Initialize the garbage collector
     hybrid_gc = HybridGC()
 
-    # Precompute building descriptions once to avoid redundant API calls
-    building_descriptions = {}
-    for iBuilding in xrange(GC.getNumBuildingInfos()):
-        try:
-            building_descriptions[iBuilding] = TextUtil.convertToStr(GC.getBuildingInfo(iBuilding).getDescription())
-        except Exception:
-            building_descriptions[iBuilding] = "Building_%d" % iBuilding
+    # Backup current language
+    iLanguage = GAME.getCurrentLanguage()
 
     # Reusable separator constant
     SEP = "-----------------------------------------------------------------\n"
     SEP2 = SEP + SEP
 
-    # Backup current language
-    iLanguage = GAME.getCurrentLanguage()
-    # Force english language for logs
-    GAME.setCurrentLanguage(0)
-
     try:
+        # Force english language for logs
+        GAME.setCurrentLanguage(0)
+        # Open file after switching language so any precomputation uses English
+        pFile = open(szFileName, "wb")
+        # Precompute building descriptions once to avoid redundant API calls
+        building_descriptions = {}
+        for iBuilding in xrange(GC.getNumBuildingInfos()):
+            try:
+                building_descriptions[iBuilding] = TextUtil.convertToStr(GC.getBuildingInfo(iBuilding).getDescription())
+            except Exception:
+                building_descriptions[iBuilding] = "Building_%d" % iBuilding
         # Global data section
         w(SEP2)
         w("\tGLOBALS\n")
@@ -224,7 +223,7 @@ def writeLog():
 
             # State religion - check actual religion type to ensure else branch can trigger
             stateReligionType = pPlayer.getStateReligion()
-            if stateReligionType != -1:  # -1 represents NO_RELIGION
+            if stateReligionType != ReligionTypes.NO_RELIGION:
                 stateReligionKey = pPlayer.getStateReligionKey()
                 try:
                     # Use direct religion info for better performance and clarity
