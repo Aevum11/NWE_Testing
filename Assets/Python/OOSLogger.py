@@ -8,6 +8,7 @@ def writeLog():
     import TextUtil
     import gc
     import os
+    import sys
 
     # Format a number with comma thousands separators
     def format_number_with_commas(number):
@@ -33,11 +34,28 @@ def writeLog():
     # Convert name once and reuse; derive from iActivePlayer to avoid API ambiguity
     pActive = GC.getPlayer(iActivePlayer)
     szPlayerName = TextUtil.convertToStr(pActive.getName())
-    # Filesystem-safe filename and portable path
-    safeName = ''.join(c if (c.isalnum() or c in (' ', '-', '_', '.')) else '_' for c in szPlayerName)
+    # Ensure Unicode player name (avoid implicit ASCII coercion)
+    try:
+        szPlayerName = szPlayerName if isinstance(szPlayerName, unicode) else szPlayerName.decode('utf-8')
+    except Exception:
+        szPlayerName = unicode(szPlayerName, 'latin-1', 'replace')
+    # Filesystem-safe filename (ASCII-only) and Unicode path components
+    safeName = u''.join(
+        c if (ord(c) < 128 and (c.isalnum() or c in (u' ', u'-', u'_', u'.')))
+        else u'_'
+        for c in szPlayerName
+    )
     if len(safeName) > 60:
         safeName = safeName[:60].rstrip()
-    log_dir = os.path.join(SP.userDir, "Logs")
+    # Build Unicode log dir using filesystem encoding
+    fsenc = sys.getfilesystemencoding() or 'mbcs'
+    user_dir = SP.userDir
+    if not isinstance(user_dir, unicode):
+        try:
+            user_dir = user_dir.decode(fsenc, 'replace')
+        except Exception:
+            user_dir = user_dir.decode('latin-1', 'replace')
+    log_dir = os.path.join(user_dir, u"Logs")
     if not os.path.isdir(log_dir):
         try:
             os.makedirs(log_dir)
@@ -48,8 +66,8 @@ def writeLog():
                 pass
             else:
                 raise
-    szFileName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (
-        safeName, iActivePlayer, GAME.getGameTurn()))
+    log_name = u"%s - Player %d - Turn %d OOSLog.txt" % (safeName, iActivePlayer, GAME.getGameTurn())
+    szFileName = os.path.join(log_dir, log_name)
 
     pFile = open(szFileName, "wb")
 
@@ -66,6 +84,17 @@ def writeLog():
                     encoded = s.decode('latin-1', 'replace').encode('utf-8', 'replace')
             pFile.write(encoded)
             hybrid_gc.bytes_written += len(encoded)
+            # Bound in-flight buffers within a single player's section
+            if hybrid_gc.bytes_written > 200000:  # ~200KB
+                try:
+                    pFile.flush()
+                    try:
+                        os.fsync(pFile.fileno())
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                hybrid_gc.bytes_written = 0
         except Exception:
             fallback = '[unprintable]\n'
             try:
