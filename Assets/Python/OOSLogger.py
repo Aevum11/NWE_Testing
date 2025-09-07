@@ -9,6 +9,22 @@ def writeLog():
     import gc
     import os
 
+    # Format a number with comma thousands separators
+    def format_number_with_commas(number):
+        if number < 0:
+            return '-' + format_number_with_commas(-number)
+
+        num_str = str(number)
+        reversed_chars = list(num_str[::-1])
+
+        result = []
+        for i, char in enumerate(reversed_chars):
+            if i > 0 and i % 3 == 0:
+                result.append(',')
+            result.append(char)
+
+        return ''.join(result[::-1])
+
     GC = CyGlobalContext()
     MAP = GC.getMap()
     GAME = GC.getGame()
@@ -28,7 +44,9 @@ def writeLog():
         except OSError, e:
             import errno
             # Only ignore when the path now exists and is a directory (race with another creator).
-            if not (e.errno == errno.EEXIST and os.path.isdir(log_dir)):
+            if e.errno == errno.EEXIST and os.path.isdir(log_dir):
+                pass
+            else:
                 raise
     szFileName = os.path.join(log_dir, "%s - Player %d - Turn %d OOSLog.txt" % (
         safeName, iActivePlayer, GAME.getGameTurn()))
@@ -50,8 +68,12 @@ def writeLog():
             hybrid_gc.bytes_written += len(encoded)
         except Exception:
             fallback = '[unprintable]\n'
-            pFile.write(fallback)
-            hybrid_gc.bytes_written += len(fallback)
+            try:
+                pFile.write(fallback)
+                hybrid_gc.bytes_written += len(fallback)
+            except Exception:
+                # Give up silently to avoid infinite error loops while logging
+                pass
 
     class HybridGC:
         def __init__(self):
@@ -94,6 +116,14 @@ def writeLog():
 
     # Initialize the garbage collector
     hybrid_gc = HybridGC()
+
+    # Precompute building descriptions once to avoid redundant API calls
+    building_descriptions = {}
+    for iBuilding in xrange(GC.getNumBuildingInfos()):
+        try:
+            building_descriptions[iBuilding] = TextUtil.convertToStr(GC.getBuildingInfo(iBuilding).getDescription())
+        except Exception:
+            building_descriptions[iBuilding] = "Building_%d" % iBuilding
 
     # Reusable separator constant
     SEP = "-----------------------------------------------------------------\n"
@@ -142,7 +172,8 @@ def writeLog():
             except NameError:
                 from CvPythonExtensions import CyTranslator
                 _translator = translator = CyTranslator()
-            civ = translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
+            try:
+                civ = translator.getText(pPlayer.getCivilizationDescriptionKey(), ())
             except Exception:
                 civ = TextUtil.convertToStr(pPlayer.getCivilizationDescriptionKey())
             w("  Civilization: %s\n" % civ)
@@ -154,7 +185,7 @@ def writeLog():
             w("Player %d Score: %d\n" % (iPlayer, GAME.getPlayerScore(iPlayer)))
             w("Player %d Population: %d\n" % (iPlayer, pPlayer.getTotalPopulation()))
             w("Player %d Total Land: %d\n" % (iPlayer, pPlayer.getTotalLand()))
-            w("Player %d Gold: %d\n" % (iPlayer, pPlayer.getGold()))
+            w("Player %d Gold: %s\n" % (iPlayer, format_number_with_commas(pPlayer.getGold())))
             w("Player %d Assets: %d\n" % (iPlayer, pPlayer.getAssets()))
             w("Player %d Power: %d\n" % (iPlayer, pPlayer.getPower()))
             w("Player %d Num Cities: %d\n" % (iPlayer, pPlayer.getNumCities()))
@@ -181,7 +212,8 @@ def writeLog():
             else:
                 w("Player %d State Religion: None\n" % iPlayer)
 
-            w("Player %d Culture: %d\n" % (iPlayer, pPlayer.getCulture()))
+            # Culture section
+            w("Player %d Culture: %s\n" % (iPlayer, format_number_with_commas(pPlayer.getCulture())))
 
             # Yields section
             w("\n\nYields:\n-------\n")
@@ -266,11 +298,16 @@ def writeLog():
 
             # Building info section
             w("\n\nBuilding Info:\n--------------------\n")
+            buildings_found = False
             for iBuilding in xrange(GC.getNumBuildingInfos()):
-                buildingDesc = TextUtil.convertToStr(GC.getBuildingInfo(iBuilding).getDescription())
-                w("Player %d, %s, Building count plus making: %d\n" % (iPlayer, buildingDesc,
-                                                                                         pPlayer.getBuildingCountPlusMaking(
-                                                                                             iBuilding)))
+                buildingCount = pPlayer.getBuildingCountPlusMaking(iBuilding)
+                if buildingCount > 0:  # Only log non-zero counts
+                    w("Player %d, %s, Building count plus making: %d\n" %
+                      (iPlayer, building_descriptions[iBuilding], buildingCount))
+                    buildings_found = True
+
+            if not buildings_found:
+                w("Player %d: No buildings\n" % iPlayer)
 
             # Unit class info section
             w("\n\nUnit Class Info:\n--------------------\n")
@@ -340,16 +377,13 @@ def writeLog():
                     w("Experience: %d\nLevel: %d\n" % (pUnit.getExperience(), pUnit.getLevel()))
 
                     # Collect promotions
-                    unitPromotions = []
+                    wrote_header = False
                     for j in xrange(GC.getNumPromotionInfos()):
                         if pUnit.isHasPromotion(j):
-                            unitPromotions.append(
-                                "\t%s\n" % TextUtil.convertToStr(GC.getPromotionInfo(j).getDescription()))
-
-                    if unitPromotions:
-                        w("Promotions:\n")
-                        for item in unitPromotions:
-                            w(item)
+                            if not wrote_header:
+                                w("Promotions:\n")
+                                wrote_header = True
+                            w("\t%s\n" % TextUtil.convertToStr(GC.getPromotionInfo(j).getDescription()))
 
                     # Collect unit combats
                     unitCombats = []
