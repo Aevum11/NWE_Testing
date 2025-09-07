@@ -1,6 +1,6 @@
 # OOS logger: writes the info contained in the sync checksum to a log file
 # Memory-optimized version for 32-bit Python 2.4 (Civ4 C2C)
-from CvPythonExtensions import CyGlobalContext, YieldTypes, CommerceTypes, UnitAITypes
+from CvPythonExtensions import CyGlobalContext, YieldTypes, CommerceTypes, UnitAITypes, ReligionTypes
 
 
 def writeLog():
@@ -12,19 +12,24 @@ def writeLog():
 
     # Format a number with comma thousands separators
     def format_number_with_commas(number):
-        if number < 0:
-            return '-' + format_number_with_commas(-number)
-
-        num_str = str(number)
-        reversed_chars = list(num_str[::-1])
-
-        result = []
-        for i, char in enumerate(reversed_chars):
-            if i > 0 and i % 3 == 0:
-                result.append(',')
-            result.append(char)
-
-        return ''.join(result[::-1])
+        try:
+            s = unicode(number)
+        except Exception:
+            s = str(number)
+        neg = s.startswith(u'-')
+        if neg:
+            s = s[1:]
+        if s.endswith(u'L'):
+            s = s[:-1]
+        if not s.isdigit():
+            return (u'-' + s) if neg else s
+        parts = []
+        for i, ch in enumerate(reversed(s)):
+            if i and i % 3 == 0:
+                parts.append(u',')
+            parts.append(ch)
+        out = u''.join(reversed(parts))
+        return (u'-' + out) if neg else out
 
     GC = CyGlobalContext()
     MAP = GC.getMap()
@@ -48,13 +53,19 @@ def writeLog():
     if len(safeName) > 60:
         safeName = safeName[:60].rstrip()
     # Build Unicode log dir using filesystem encoding
-    fsenc = sys.getfilesystemencoding() or 'mbcs'
+    fsenc = (sys.getfilesystemencoding()
+             or locale.getpreferredencoding()
+             or sys.getdefaultencoding()
+             or 'utf-8')
     user_dir = SP.userDir
     if not isinstance(user_dir, unicode):
         try:
             user_dir = user_dir.decode(fsenc, 'replace')
         except Exception:
-            user_dir = user_dir.decode('latin-1', 'replace')
+            try:
+                user_dir = user_dir.decode('mbcs', 'replace')  # Windows fallback
+            except Exception:
+                user_dir = user_dir.decode('latin-1', 'replace')
     log_dir = os.path.join(user_dir, u"Logs")
     if not os.path.isdir(log_dir):
         try:
@@ -231,8 +242,7 @@ def writeLog():
                 except Exception:
                     # Fallback to key translation if direct access fails
                     try:
-                        from CvPythonExtensions import CyTranslator
-                        stateReligionStr = CyTranslator().getText(stateReligionKey, ())
+                        stateReligionStr = translator.getText(stateReligionKey, ())
                     except Exception:
                         # Final fallback to key conversion
                         stateReligionStr = TextUtil.convertToStr(stateReligionKey)
@@ -338,7 +348,7 @@ def writeLog():
                 w("Player %d: No buildings\n" % iPlayer)
 
             # Unit class info section
-            w("\n\nUnit Class Info:\n--------------------\n")
+            w("\n\nUnit Type Info:\n--------------------\n")
             for iUnit in xrange(GC.getNumUnitInfos()):
                 unitDesc = TextUtil.convertToStr(GC.getUnitInfo(iUnit).getDescription())
                 w("Player %d, %s, Unit count plus making: %d\n" % (iPlayer, unitDesc,
