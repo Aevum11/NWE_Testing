@@ -9,6 +9,7 @@ def writeLog():
     import gc
     import os
     import sys
+    import locale
 
     # Format a number with comma thousands separators
     def format_number_with_commas(number):
@@ -166,7 +167,10 @@ def writeLog():
         # Force english language for logs
         GAME.setCurrentLanguage(0)
         # Open file after switching language so any precomputation uses English
-        pFile = open(szFileName, "wb")
+        pFile = open(
+            (szFileName.encode(fsenc, 'replace') if isinstance(szFileName, unicode) else szFileName),
+            "wb"
+            )
         # Precompute building descriptions once to avoid redundant API calls
         building_descriptions = {}
         for iBuilding in xrange(GC.getNumBuildingInfos()):
