@@ -26865,10 +26865,6 @@
 			<ConstructCondition>
 				<Or>
 					<Has>
-						<GOMType>GOM_BONUS</GOMType>
-						<ID>BONUS_FINE_CLAY</ID>
-					</Has>
-					<Has>
 						<GOMType>GOM_TERRAIN</GOMType>
 						<ID>TERRAIN_MUDDY</ID>
 					</Has>
@@ -100982,6 +100978,8 @@
 				<Bonus>BONUS_CAMEL</Bonus>
 				<Bonus>BONUS_LLAMA</Bonus>
 				<Bonus>BONUS_ELEPHANTS</Bonus>
+				<Bonus>BONUS_BISON</Bonus>
+				<Bonus>BONUS_DEER</Bonus>
 			</PrereqBonuses>
 			<PrereqOrBuildings>
 				<BuildingType>BUILDING_STABLE</BuildingType>
@@ -101015,7 +101013,34 @@
 					<FreePromotionCondition>
 						<Has>
 							<GOMType>GOM_UNITCOMBAT</GOMType>
-							<ID>UNITCOMBAT_MOUNTED</ID>
+							<ID>UNITCOMBAT_MOUNT_HORSE</ID>
+						</Has>
+					</FreePromotionCondition>
+				</FreePromoType>
+				<FreePromoType>
+					<PromotionType>PROMOTION_SPEED</PromotionType>
+					<FreePromotionCondition>
+						<Has>
+							<GOMType>GOM_UNITCOMBAT</GOMType>
+							<ID>UNITCOMBAT_MOUNT_CAMEL</ID>
+						</Has>
+					</FreePromotionCondition>
+				</FreePromoType>
+				<FreePromoType>
+					<PromotionType>PROMOTION_SPEED</PromotionType>
+					<FreePromotionCondition>
+						<Has>
+							<GOMType>GOM_UNITCOMBAT</GOMType>
+							<ID>UNITCOMBAT_MOUNT_DEER</ID>
+						</Has>
+					</FreePromotionCondition>
+				</FreePromoType>
+				<FreePromoType>
+					<PromotionType>PROMOTION_SPEED</PromotionType>
+					<FreePromotionCondition>
+						<Has>
+							<GOMType>GOM_UNITCOMBAT</GOMType>
+							<ID>UNITCOMBAT_MOUNT_BISON</ID>
 						</Has>
 					</FreePromotionCondition>
 				</FreePromoType>
@@ -103374,7 +103399,7 @@
 				<BuildingType>BUILDING_MATERIALS_CONGLOMERATE</BuildingType>
 			</ReplacementBuildings>
 			<ObsoletesToBuilding>BUILDING_MATERIALS_CONGLOMERATE</ObsoletesToBuilding>
-			<VicinityBonus>BONUS_SALT</VicinityBonus>
+			<RawVicinityBonus>BONUS_SALT</RawVicinityBonus>
 			<PrereqInCityBuildings>
 				<BuildingType>BUILDING_MINING_CAMP</BuildingType>
 			</PrereqInCityBuildings>
