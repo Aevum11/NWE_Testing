@@ -1,5 +1,5 @@
 # OOS logger: writes the info contained in the sync checksum to a log file
-# Memory-optimized version for 32-bit Python 2.4 (Civ4 C2C)
+## Aevum11 - Memory Optimization
 from CvPythonExtensions import CyGlobalContext, YieldTypes, CommerceTypes, UnitAITypes, ReligionTypes
 
 
@@ -117,14 +117,13 @@ def writeLog():
     class HybridGC:
         def __init__(self):
             self.last_gc_player = -1
-            self.base_interval = 6  # Increased from 4
+            self.base_interval = 6
             self.min_interval = 2
             self.pressure_factor = 1.3
             self.bytes_written = 0  # Track approximate buffer size
 
         def should_collect(self, player_index):
-            """Multi-factor decision for garbage collection"""
-            # Never collect too frequently
+            # Multi-factor decision for garbage collection
             if (player_index - self.last_gc_player) < self.min_interval:
                 return False
 
@@ -236,12 +235,12 @@ def writeLog():
             w("Player %d Num Selection Groups: %d\n" % (iPlayer, pPlayer.getNumSelectionGroups()))
             w("Player %d Difficulty: %d\n" % (iPlayer, pPlayer.getHandicapType()))
 
-            # State religion - check actual religion type to ensure else branch can trigger
+            # State religion
             stateReligionType = pPlayer.getStateReligion()
             if stateReligionType != ReligionTypes.NO_RELIGION:
                 stateReligionKey = pPlayer.getStateReligionKey()
                 try:
-                    # Use direct religion info for better performance and clarity
+                    # Use direct religion info
                     stateReligionStr = GC.getReligionInfo(stateReligionType).getDescription()
                 except Exception:
                     # Fallback to key translation if direct access fails
@@ -304,7 +303,7 @@ def writeLog():
                     w("X: %d, Y: %d\n" % (pCity.getX(), pCity.getY()))
                     w("Population: %d\n" % pCity.getPopulation())
 
-                    # Count buildings efficiently
+                    # Count buildings
                     iBuildingCount = 0
                     for iBuilding in xrange(GC.getNumBuildingInfos()):
                         if pCity.hasBuilding(iBuilding):
