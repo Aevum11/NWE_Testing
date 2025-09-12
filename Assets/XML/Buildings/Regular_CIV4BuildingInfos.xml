@@ -95268,7 +95268,7 @@
 			</ReplacementBuildings>
 			<ObsoletesToBuilding>BUILDING_MANUFACTURING_DISTRICT</ObsoletesToBuilding>
 			<bPrereqPower>1</bPrereqPower>
-			<Bonus>BONUS_FINE_CLAY</Bonus>
+			<VicinityBonus>BONUS_FINE_CLAY</VicinityBonus>
 			<PrereqBonuses>
 				<Bonus>BONUS_STONE</Bonus>
 			</PrereqBonuses>
@@ -95320,7 +95320,7 @@
 				<MapCategoryType>MAPCATEGORY_EARTH</MapCategoryType>
 			</MapCategoryTypes>
 			<PrereqTech>TECH_AESTHETICS</PrereqTech>
-			<Bonus>BONUS_FINE_CLAY</Bonus>
+			<VicinityBonus>BONUS_FINE_CLAY</VicinityBonus>
 			<PrereqBonuses>
 				<Bonus>BONUS_STONE</Bonus>
 			</PrereqBonuses>
