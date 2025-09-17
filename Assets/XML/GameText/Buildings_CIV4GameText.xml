@@ -4216,7 +4216,7 @@
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_ASTEROID_PIRATE_BASE</Tag>
 		<English>Asteroid Pirate Base</English>
-		<French>Base de Pirates d'Astéroïdes</French>
+		<French>Base de Pirates sur un Astéroïde</French>
 		<Italian>Base pirata su un asteroide</Italian>
 		<Russian>Пиратская база (Астероиды)</Russian>
 	</TEXT>
@@ -42413,7 +42413,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_MILLIWAYS</Tag>
 		<English>Milliways</English>
-		<French>A traduire - Milliways</French>
+		<French>Milliways</French>
 		<Russian>Миллиуэй</Russian>
 	</TEXT>
 	<TEXT>
@@ -42643,7 +42643,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_MIR</Tag>
 		<English>Mir</English>
-		<French>A traduire - Mir</French>
+		<French>Station Mir</French>
 		<Russian>Ìèð</Russian>
 	</TEXT>
 	<TEXT>
@@ -43446,7 +43446,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_MOTEL</Tag>
 		<English>Motel</English>
-		<French>A traduire - Motel</French>
+		<French>Motel</French>
 		<Russian>Ìîòåëü</Russian>
 	</TEXT>
 	<TEXT>
@@ -43634,7 +43634,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_MULTIVAC</Tag>
 		<English>Multivac</English>
-		<French>A traduire - Multivac</French>
+		<French>Multivac</French>
 		<Russian>Мультивак</Russian>
 	</TEXT>
 	<TEXT>
@@ -44074,7 +44074,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_CULTURE_NANOPUNK</Tag>
 		<English>Culture (Nanopunk)</English>
-		<French>A traduire - Culture (Nanopunk)</French>
+		<French>Culture (Nanopunk)</French>
 	</TEXT>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_CULTURE_NANOPUNK_PEDIA</Tag>
@@ -45536,13 +45536,13 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_NEOM</Tag>
 		<English>NEOM</English>
-		<French>A traduire - NEOM</French>
+		<French>NEOM</French>
 		<Russian>НЕОМ</Russian>
 	</TEXT>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_NEOM_PEDIA</Tag>
 		<English>Neom (styled NEOM) is a planned 10,230-square-mile (26,500 sq km) transnational city and economic zone to be constructed in the border region of Saudi Arabia, Jordan, and Egypt (via a proposed bridge across the Gulf of Aqaba).</English>
-		<French>Neom (stylisé NEOM) est une ville transnationale et une zone économique planifiée de 10 230 miles carrés (26 500 km²) qui doit être construite dans la région frontalière de l'Arabie saoudite, de la Jordanie et de l'Égypte (via un pont proposé à travers le golfe d'Aqaba).</French>
+		<French>Néom (stylisé NEOM) est une ville transnationale et une zone économique planifiée de 10 230 miles carrés (26 500 km²) qui doit être construite dans la région frontalière de l'Arabie saoudite, de la Jordanie et de l'Égypte (via un pont proposé à travers le golfe d'Aqaba).</French>
 		<Russian>Неом (аббр. НЕОМ) - саудовский проект умного и туристического трансграничного города, который по плану должен будет располагаться на крайнем северо-западе Саудовской Аравии, в Табуке. Он должен включить также и морскую территорию, расположенную у египетской и иорданской границ. Предполагается, что Неом предоставит множество инвестиционных возможностей на территории общей площадью в 26 500 кв. км, и будет простираться на 460 км вдоль побережья Красного моря.[PARAGRAPH:2]Проект направлен на преобразование Саудовской Аравии в страну XXI века, служащей моделью для других в различных аспектах прогресса. Одной из основных целей проекта является поиск путей сотрудничества и финансовых вложений с широкой сетью международных инвесторов и инноваторов, а также нацелен на ориентацию на передовые отрасли и технологии. Первый этап возведения города должен быть завершен к 2025 году.</Russian>
 	</TEXT>
 	<TEXT>
@@ -46002,7 +46002,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_OLDOINYO_NGAI</Tag>
 		<English>Oldoinyo Ngai</English>
-		<French>A traduire - Oldoinyo Ngai</French>
+		<French>Oldoinyo Ngai</French>
 		<Russian>Îëüäîèíüî-Íãàè</Russian>
 	</TEXT>
 	<TEXT>
@@ -46956,7 +46956,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_OMELAS</Tag>
 		<English>Omelas</English>
-		<French>A traduire - Omelas</French>
+		<French>Omelas</French>
 		<Russian>Омелас</Russian>
 	</TEXT>
 	<TEXT>
@@ -47044,7 +47044,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_ONYX</Tag>
 		<English>Onyx</English>
-		<French>A traduire - Onyx</French>
+		<French>Onyx</French>
 		<Russian>Оникс</Russian>
 	</TEXT>
 	<TEXT>
@@ -58842,7 +58842,7 @@ TXT_KEY_BUILDING_CRIME_HACKING_PEDIA"</French>
 	<TEXT>
 		<Tag>TXT_KEY_BUILDING_DISTANT_PIRATE_BASE_PEDIA</Tag>
 		<English>Arrrgh!</English>
-		<French>A traduire - Arrrgh!</French>
+		<French>Arrrgh!</French>
 		<Russian>Кар-рамба-а!</Russian>
 	</TEXT>
 	<TEXT>

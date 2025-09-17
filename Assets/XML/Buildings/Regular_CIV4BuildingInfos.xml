@@ -76150,7 +76150,7 @@
 			<iFreeSpecialist>4</iFreeSpecialist>
 			<iDCMAirbombMission>2</iDCMAirbombMission>
 			<iMaintenanceModifier>5</iMaintenanceModifier>
-			<iPrereqPopulation>30</iPrereqPopulation>
+			<iPrereqPopulation>15</iPrereqPopulation>
 			<iWorkableRadius>3</iWorkableRadius>
 			<iAsset>4</iAsset>
 			<iPower>5</iPower>
