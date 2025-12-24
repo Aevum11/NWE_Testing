@@ -368,8 +368,10 @@ void CvCity::init(int iID, PlayerTypes eOwner, int iX, int iY, bool bBumpUnits, 
 
 	GC.getGame().changeNumCities(1);
 
-	setGameTurnFounded(GC.getGame().getGameTurn());
-	setGameTurnAcquired(GC.getGame().getGameTurn());
+	bool bHistoricalCalendar = GC.getGame().isModderGameOption(MODDERGAMEOPTION_USE_HISTORICAL_ACCURATE_CALENDAR);
+
+	setGameTurnFounded(GC.getGame().getGameTurn(), bHistoricalCalendar);
+	setGameTurnAcquired(GC.getGame().getGameTurn(), bHistoricalCalendar);
 
 	setPopulation(GC.getINITIAL_CITY_POPULATION() + GC.getEraInfo(GC.getGame().getStartEra()).getFreePopulation(), false);
 
@@ -3704,6 +3706,10 @@ int CvCity::getTotalProductionQueueTurnsLeft() const
 	foreach_ (const OrderData & order, m_orderQueue)
 	{
 		int productionNeeded = getProductionNeeded(order);
+		if (productionNeeded > 999)
+		{
+			return 999;
+		}
 
 		while (productionNeeded > 0)
 		{
@@ -3718,7 +3724,7 @@ int CvCity::getTotalProductionQueueTurnsLeft() const
 				// Next turn
 				productionNeeded -= currProd;
 				currProd = getProductionDifference(order, ProductionCalc::FoodProduction);
-				if (currProd == 0)
+				if (currProd <= 0)
 				{
 					return MAX_INT;
 				}
@@ -6430,7 +6436,7 @@ if (!bHasCalculatedNeighbors) return MAX_INT;
 	// Distance from features
 	if (featureType != NO_FEATURE)
 	{
-		// some features cause underlaying terrain cost to be ignored; oasis, floodplain, nat'l wonders
+		// some features cause underlying terrain cost to be ignored; oasis, floodplain, natural wonders
 		const CvFeatureInfo& featureInfo = GC.getFeatureInfo((FeatureTypes)featureType);
 		if (featureInfo.isIgnoreTerrainCulture())
 		{
@@ -6866,34 +6872,105 @@ void CvCity::setRallyPlot(const CvPlot* pPlot)
 }
 
 
-int CvCity::getGameTurnFounded() const
+int CvCity::getGameTurnFounded(const bool bACalendar) const
 {
+	if (bACalendar) // Accurate Calendar
+	{
+		return decodeACTurn(m_iGameTurnFounded);
+	}
 	return m_iGameTurnFounded;
 }
 
 
-void CvCity::setGameTurnFounded(int iNewValue)
+void CvCity::setGameTurnFounded(const int iNewValue, const bool bHistoricalCalendar)
 {
-	if (getGameTurnFounded() != iNewValue)
+	if (bHistoricalCalendar)
 	{
-		m_iGameTurnFounded = iNewValue;
-		FASSERT_NOT_NEGATIVE(getGameTurnFounded());
+		CvDate& turnDate = GC.getGame().getCurrentDate();
+		int encodeddate = encodeACDateturn(turnDate.getYear(), iNewValue);
+		m_iGameTurnFounded = encodeddate;
+		//Calvitix (store the year directly, as the turn=>Date is dynamic with Accurate Calendar)
 
 		GC.getMap().updateWorkingCity();
 	}
+	else
+	{
+		if (getGameTurnFounded() != iNewValue)
+		{
+			m_iGameTurnFounded = iNewValue;
+			FASSERT_NOT_NEGATIVE(getGameTurnFounded());
+
+			GC.getMap().updateWorkingCity();
+		}
+	}
+}
+
+int CvCity::getGameDateFounded(const bool bACalendar) const
+{
+	if (bACalendar) // Accurate Calendar
+	{
+		return decodeACDate(m_iGameTurnFounded);
+	}
+	return m_iGameTurnFounded;
 }
 
 
-int CvCity::getGameTurnAcquired() const
+void CvCity::setGameDateFounded(const int iNewValue, const bool bHistoricalCalendar)
 {
+	if (bHistoricalCalendar)
+	{
+		CvDate& turnDate = GC.getGame().getCurrentDate();
+		//Calvitix (store the year directly, as the turn=>Date is dynamic with Accurate Calendar)
+		m_iGameTurnFounded = encodeACDateturn(turnDate.getYear(), iNewValue);
+
+		GC.getMap().updateWorkingCity();
+	}
+	else
+	{
+		if (getGameTurnFounded() != iNewValue)
+		{
+			m_iGameTurnFounded = iNewValue;
+			FASSERT_NOT_NEGATIVE(getGameTurnFounded());
+
+			GC.getMap().updateWorkingCity();
+		}
+	}
+}
+
+int CvCity::getGameTurnAcquired(const bool bHistoricalCalendar) const
+{
+	if (bHistoricalCalendar) // Accurate Calendar
+	{
+		return decodeACTurn(m_iGameTurnAcquired);
+	}
+	return m_iGameTurnAcquired;
+}
+
+int CvCity::getGameDateAcquired(const bool bHistoricalCalendar) const
+{
+	if (bHistoricalCalendar) // Accurate Calendar
+	{
+		return decodeACDate(m_iGameTurnAcquired);
+	}
 	return m_iGameTurnAcquired;
 }
 
 
-void CvCity::setGameTurnAcquired(int iNewValue)
+void CvCity::setGameTurnAcquired(const int iNewValue, const bool bHistoricalCalendar)
 {
-	m_iGameTurnAcquired = iNewValue;
-	FASSERT_NOT_NEGATIVE(getGameTurnAcquired());
+	if (bHistoricalCalendar)
+	{
+		CvDate& turnDate = GC.getGame().getCurrentDate();
+		m_iGameTurnAcquired = iNewValue;
+		//Calvitix (store the year directly, and encode the Date wit hwiseBit)
+		m_iGameTurnAcquired = encodeACDateturn(turnDate.getYear(), iNewValue);
+
+	}
+	else
+	{
+		m_iGameTurnAcquired = iNewValue;
+		FASSERT_NOT_NEGATIVE(getGameTurnAcquired());
+	}
 }
 
 
@@ -9833,7 +9910,7 @@ void CvCity::changeFoodKeptPercent(int iChange)
 
 int CvCity::getMaxProductionOverflow() const
 {
-	return getYieldRate(YIELD_PRODUCTION) * 7/4; // 1.75
+	return getYieldRate(YIELD_PRODUCTION) * 2;
 }
 
 
@@ -10972,18 +11049,44 @@ int CvCity::getAdditionalExtraYieldByBuilding(YieldTypes eIndex, BuildingTypes e
 		}
 	}
 
-	// Bonuses
+//	// Bonuses
+//	for (int iI = 0; iI < GC.getNumBonusInfos(); ++iI)
+//	{
+//		if (hasBonus((BonusTypes)iI))
+//		{
+//			iExtraYield += building.getBonusYieldChanges(iI, eIndex);
+//		}
+//		if (building.getVicinityBonusYieldChanges(iI, eIndex) != 0 && hasVicinityBonus((BonusTypes)iI))
+//		{
+//			iExtraYield += building.getVicinityBonusYieldChanges(iI, eIndex);
+//		}
+//	}
+
 	for (int iI = 0; iI < GC.getNumBonusInfos(); ++iI)
-	{
-		if (hasBonus((BonusTypes)iI))
-		{
-			iExtraYield += building.getBonusYieldChanges(iI, eIndex);
-		}
-		if (building.getVicinityBonusYieldChanges(iI, eIndex) != 0 && hasVicinityBonus((BonusTypes)iI))
-		{
-			iExtraYield += building.getVicinityBonusYieldChanges(iI, eIndex);
-		}
-	}
+    {
+       if (eBuilding == (BuildingTypes)GC.getInfoTypeForString("BUILDING_STORAGE"))
+       {
+           int iBonusCount = GET_PLAYER(getOwner()).getNumAvailableBonuses((BonusTypes)iI);
+
+           if (iBonusCount > 0)
+           {
+               // Add empire-wide bonus yields
+               iExtraYield += iBonusCount * building.getBonusYieldChanges(iI, eIndex);
+           }
+       }
+        else
+        {
+            if (hasBonus((BonusTypes)iI))
+            {
+                iExtraYield += building.getBonusYieldChanges(iI, eIndex);
+            }
+
+            if (building.getVicinityBonusYieldChanges(iI, eIndex) != 0 && hasVicinityBonus((BonusTypes)iI))
+            {
+                iExtraYield += building.getVicinityBonusYieldChanges(iI, eIndex);
+            }
+        }
+    }
 
 	const int iTradeRoutes = building.getGlobalTradeRoutes() + building.getCoastalTradeRoutes() + building.getTradeRoutes();
 	if (iTradeRoutes != 0)
@@ -15358,7 +15461,7 @@ bool CvCity::pushFirstValidBuildListOrder(int iListID)
 
 		if (canContinueProduction(*pOrder))
 		{
-			pushOrder(pOrder->eOrderType, pOrder->iData1, pOrder->iData2, pOrder->bSave, false, false);
+			pushOrder(pOrder->eOrderType, pOrder->iData1, pOrder->iData2, pOrder->bSave, false, true); //Calvitix, append buildings, not insert
 			return true;
 		}
 	}
@@ -15376,7 +15479,9 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 	}
 
 	bool bValid = false;
+	bool bJustAddedProcess = false;
 	CvPlayerAI& owner = GET_PLAYER(getOwner());
+	bool bIsHuman = owner.isHumanPlayer(true);
 
 	OrderData order;
 
@@ -15405,7 +15510,26 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 					:
 					order.unit.plotIndex = 0xFFFF;
 
+
+
 				order = OrderData::createUnitOrder(unitType, AIType, plotIndex, contractFlags, contractedAIType, bSave);
+
+				int alreadyQueued = 0;
+				for (std::vector<OrderData>::const_iterator it = m_orderQueue.begin(); it != m_orderQueue.end(); ++it) {
+					if (it->eOrderType == ORDER_TRAIN && it->getUnitType() == order.getUnitType()) {
+						alreadyQueued+= 1;
+					}
+				}
+
+				//don't add the same unit if already 2 of them (if prod take more than 2 turns), and the first item in queue is not already finished, and the cost of the order is more than 3 turns
+				if (!bIsHuman && (bAppend && !bForce) && ((alreadyQueued > 1 && getProductionTurnsLeft(unitType, 2) > 2) || alreadyQueued > 4)) {
+					if (gCityLogLevel >= 3)
+					{
+						const CvWString szStringUnitAi = GC.getUnitAIInfo(order.getUnitAIType()).getType();
+						logBBAI("    City %S unit %S for type %S is already in queue", getName().GetCString(), GC.getUnitInfo(unitType).getDescription(getCivilizationType()), szStringUnitAi.GetCString());
+					}
+					return;
+				}
 
 				owner.changeUnitMaking(unitType, 1);
 
@@ -15416,9 +15540,10 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 				setUnitListInvalid();
 				if (gCityLogLevel >= 1)
 				{
-					
+					CvWString verb = "pushes";
+					if (!bAppend) verb = "inserts";
 					const CvWString szStringUnitAi = GC.getUnitAIInfo(order.getUnitAIType()).getType();
-					logBBAI("    City %S pushes production of unit %S for type %S", getName().GetCString(), GC.getUnitInfo(unitType).getDescription(getCivilizationType()), szStringUnitAi.GetCString());
+					logBBAI("    City %S %S production of unit %S for type %S", getName().GetCString(), verb.GetCString(), GC.getUnitInfo(unitType).getDescription(getCivilizationType()), szStringUnitAi.GetCString());
 				}
 				bValid = true;
 			}
@@ -15430,6 +15555,23 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 			if (canConstruct(buildingType) || bForce)
 			{
 				order = OrderData::createBuildingOrder(buildingType, bSave);
+
+				int alreadyQueued = 0;
+				for (std::vector<OrderData>::const_iterator it = m_orderQueue.begin(); it != m_orderQueue.end(); ++it) {
+					if (it->eOrderType == ORDER_CONSTRUCT && it->getBuildingType() == order.getBuildingType()) {
+						alreadyQueued += 1;
+					}
+				}
+
+				//don't add the same building after
+				if (!bIsHuman && (bAppend && !bForce) && alreadyQueued > 0) {
+					if (gCityLogLevel >= 3)
+					{
+						logBBAI("    City %S building %S already in queue", getName().GetCString(), GC.getBuildingInfo(buildingType).getDescription());
+					}
+					return;
+				}
+
 				NoteBuildingNoLongerConstructable(buildingType);
 
 				owner.changeBuildingMaking(buildingType, 1);
@@ -15444,7 +15586,9 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 				setBuildingListInvalid();
 				if (gCityLogLevel >= 1)
 				{
-					logBBAI("    City %S pushes production of building %S", getName().GetCString(), GC.getBuildingInfo(buildingType).getDescription());
+					CvWString verb = "pushes";
+					if (!bAppend) verb = "inserts";
+					logBBAI("    City %S %S production of building %S", getName().GetCString(), verb.GetCString(), GC.getBuildingInfo(buildingType).getDescription());
 				}
 				bValid = true;
 			}
@@ -15475,9 +15619,13 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 				CvEventReporter::getInstance().cityBuildingProcess(this, processType);
 				if (gCityLogLevel >= 1)
 				{
-					logBBAI("    City %S pushes production of process %S", getName().GetCString(), GC.getProcessInfo(processType).getDescription());
+					CvWString verb = "pushes";
+					if (!bAppend) verb = "inserts";
+					logBBAI("    City %S %S production of process %S", getName().GetCString(), verb.GetCString(), GC.getProcessInfo(processType).getDescription());
 				}
 				bValid = true;
+				//if (!bForce) bAppend = true;
+				bJustAddedProcess = true;
 			}
 			break;
 		}
@@ -15494,12 +15642,15 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 		return;
 	}
 
-	if (m_orderQueue.empty() && owner.isHumanPlayer(true))
+
+
+	if (m_orderQueue.empty() && bIsHuman)
 	{
 		owner.setIdleCity(getID(), false);
 	}
 
-	if (bAppend)
+
+	if (bAppend && !m_orderQueue.empty() && !(m_orderQueue.begin()->eOrderType == ORDER_MAINTAIN))
 	{
 		m_orderQueue.push_back(order);
 	}
@@ -15526,6 +15677,21 @@ void CvCity::pushOrder(OrderTypes eOrder, int iData1, int iData2, bool bSave, bo
 			popOrder(1);
 		}
 	}
+
+	//Check the Queue, and remove process if there's something else to do
+	if (!bJustAddedProcess && getOrderQueueLength() > 1 && m_orderQueue[0].eOrderType == ORDER_MAINTAIN)
+	{
+		CvString str = GC.getProcessInfo(m_orderQueue[0].getProcessType()).getType();
+		const PlayerTypes eOwner = getOwner();
+		CvPlayerAI& player = GET_PLAYER(eOwner);
+		const bool bFinancialTrouble = player.AI_isFinancialTrouble();
+		if (!bFinancialTrouble)
+		{ // IF financial Trouble, keep the process if needed
+			popOrder(0);
+		}
+		LOG_BBAI_CITY(3, ("    City %S has process on head, and queue added. Removing  %S", getName().GetCString(), str.GetCString()));
+	}
+
 
 	// Why does this cause a crash???
 

@@ -426,6 +426,16 @@ void makeValueString(CvWString& szValue, const int iValue, const bool bWholeNumb
 
 int applyDistanceScoringFactor(int score, const CvPlot* sourcePlot, const CvPlot* targetPlot, const int currentPlotBoost = 1);
 
+int encodeACDateturn(int decodeda, int b);
+
+int decodeACDate(int n);
+
+int decodeACTurn(int n);
+
+int mapValue(int x);
+
+int inverseMapValue(int y);
+
 // Conversion enum -> brut string (MISSION_XXXXX
 CvString MissionAITypeToString(MissionAITypes eMissionAI);
 
@@ -433,4 +443,9 @@ CvString MissionAITypeToString(MissionAITypes eMissionAI);
 CvString MissionAITypeToDescription(MissionAITypes eMissionAI);
 
 CvString AutomateTypeToDescription(AutomateTypes eAutomateAI);
+
+char remove_diacritic_char(unsigned char c);
+
+CvString remove_diacritics(const CvString& input);
+
 #endif

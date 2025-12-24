@@ -19,6 +19,9 @@
 #include "CvUnitAI.h"
 #include "index_iterator_base.h"
 #include "LinkedList.h"
+#ifdef CVARMY_BREAKSAVE
+	#include "CvArmy.h"
+#endif
 
 class CvArea;
 class CvDiploParameters;
@@ -27,17 +30,18 @@ class CvPlot;
 class CvPopupInfo;
 class CvUnitSelectionCriteria;
 class CvUpgradeCache;
+class CvPlayerAI;
 
 #define	UNIT_BIRTHMARK_TEMP_UNIT	20000
 
-#define MAX_RESEARCH_RATE_VALUE 9000000
-#define MAX_COMMERCE_RATE_VALUE 90000000
+#define MAX_RESEARCH_RATE_VALUE 1999999999
+#define MAX_COMMERCE_RATE_VALUE 1999999999
 #define MAX_COMMERCE_VALUE 900000000
-#define MAX_RESEARCH_RATE_VALUE100 900000000
-#define MAX_COMMERCE_RATE_VALUE100 900000000
-#define MAX_COMMERCE_RATE_MODIFIER_VALUE 90000000
+#define MAX_RESEARCH_RATE_VALUE100 1999999999
+#define MAX_COMMERCE_RATE_VALUE100 1999999999
+#define MAX_COMMERCE_RATE_MODIFIER_VALUE 1999999999
 #define MAX_GOLD_VALUE 9999999999999999
-#define MAX_GOLD_PER_TURN_VALUE 99999999
+#define MAX_GOLD_PER_TURN_VALUE 1999999999
 #define MIN_TOL_FALSE_ACCUMULATE -9999
 #define MIN_TOL_FALSE_RESEARCH -9999
 
@@ -1143,6 +1147,13 @@ public:
 	CvUnit* addUnit();
 	void deleteUnit(int iID);
 
+#ifdef CVARMY_BREAKSAVE
+	CvArmy* getArmy(int iArmyID) const;
+
+	void deleteArmy(int iArmyID);
+
+#endif
+
 	// selection groups iteration
 	DECLARE_INDEX_ITERATOR(const CvPlayer, CvSelectionGroup, group_iterator, firstSelectionGroup, nextSelectionGroup);
 	group_iterator beginGroups() const { return group_iterator(this); }
@@ -1639,6 +1650,7 @@ protected:
 	int m_iSecondMergeSelection;
 	int m_iSplittingUnit;
 	int m_iAmbushingUnit;
+	int m_iAmbushingTargetUnit;
 	bool m_bAssassinate;
 
 	int m_iBuildingInflation;
@@ -1660,6 +1672,7 @@ protected:
 	int	m_zobristValue;
 
 	bool m_turnHadUIInteraction;
+
 
 public:
 	void verifyUnitStacksValid();
@@ -2005,6 +2018,10 @@ protected:
 	std::vector<FFreeListTrashArray<CvUnitAI>*>			  m_units;
 	std::vector<FFreeListTrashArray<CvSelectionGroupAI>*> m_selectionGroups;
 
+#ifdef CVARMY_BREAKSAVE
+	FFreeListTrashArray<CvArmy>							  m_armies;
+#endif 
+
 	FFreeListTrashArray<EventTriggeredData> m_eventsTriggered;
 	CvEventMap m_mapEventsOccured;
 	CvEventMap m_mapEventCountdown;
@@ -2291,8 +2308,10 @@ public:
 	void setSplittingUnit(int iNewValue);
 
 	int getAmbushingUnit() const;
+	int getAmbushingTargetUnit() const;
 	bool isAssassinate() const;
 	void setAmbushingUnit(int iNewValue, bool bAssassinate = false);
+	void setAmbushingTargetUnit(int iNewValue, bool bAssassinate = true);
 
 	int getGreatGeneralPointsForType(const UnitTypes eUnit) const;
 	void setGreatGeneralPointsForType(const UnitTypes eUnit, const int iValue);

@@ -328,6 +328,7 @@ CvPlayer::~CvPlayer()
 		SAFE_DELETE(m_units[i]);
 		SAFE_DELETE(m_selectionGroups[i]);
 	}
+	//SAFE_DELETE(m_armies);
 }
 
 
@@ -345,7 +346,13 @@ void CvPlayer::baseInit(PlayerTypes eID)
 		m_cities[i]->init();
 		m_units[i]->init();
 		m_selectionGroups[i]->init();
+
 	}
+#ifdef CVARMY_BREAKSAVE
+	m_armies.init(1);
+	m_armies.setCurrentID(0);
+#endif // CVARMY_BREAKSAVE
+
 	m_eventsTriggered.init();
 	//--------------------------------
 	// Init non-saved data
@@ -709,6 +716,9 @@ void CvPlayer::uninit()
 		m_selectionGroups[i]->uninit();
 	}
 	m_eventsTriggered.uninit();
+
+	m_armies.uninit();
+
 
 	clearMessages();
 
@@ -2571,9 +2581,10 @@ void CvPlayer::acquireCity(CvCity* pOldCity, bool bConquest, bool bTrade, bool b
 
 		FAssertMsg(pNewCity, "NewCity is not assigned a valid value");
 
+		bool bHistoricalCalendar = GC.getGame().isModderGameOption(MODDERGAMEOPTION_USE_HISTORICAL_ACCURATE_CALENDAR);
 		pNewCity->setPreviousOwner(eOldOwner);
 		pNewCity->setOriginalOwner(eOriginalOwner);
-		pNewCity->setGameTurnFounded(iGameTurnFounded);
+		pNewCity->setGameTurnFounded(iGameTurnFounded, bHistoricalCalendar);
 		pNewCity->setPopulation((bConquest && !bRecapture) ? std::max(1, (iPopulation - 1)) : iPopulation, false);
 		pNewCity->setHighestPopulation(iHighestPopulation);
 		pNewCity->setName(cityName);
@@ -3848,7 +3859,8 @@ void CvPlayer::doTurn()
 		//Calvitix, Modmod FOGWAR PlotDecay
 		if (isHumanPlayer() || GC.getGame().getAIAutoPlay(getID()) > 0 || gDLL->GetAutorun())
 		{
-			if (GET_TEAM(getTeam()).getVisibilityDecay() != NO_DECAY)
+			CvGame& GAME = GC.getGame();
+			if (GAME.isModderGameOption(MODDERGAMEOPTION_FOGWAR_DECAY) && GET_TEAM(getTeam()).getVisibilityDecay() != NO_DECAY)
 				GC.getMap().updateFog(true); //Calvitix, to applyPlotDecay
 		}
 #endif
@@ -8046,12 +8058,16 @@ int CvPlayer::calculateUnitSupply(int& iPaidUnits, int& iBaseSupplyCost) const
 	}
 	if (isNormalAI())
 	{
-		iMod +=
-		(
-			GC.getHandicapInfo(GC.getGame().getHandicapType()).getAIUnitSupplyPercent() - 100
-			+
-			GC.getHandicapInfo(GC.getGame().getHandicapType()).getAIPerEraModifier() * getCurrentEra()
-		);
+		CvHandicapInfo* handicap = &(GC.getHandicapInfo(GC.getGame().getHandicapType()));
+		if (handicap != NULL)
+		{
+			iMod +=
+				(
+					handicap->getAIUnitSupplyPercent() - 100
+					+
+					handicap->getAIPerEraModifier() * getCurrentEra()
+				);
+		}
 	}
 	if (iMod != 0)
 	{
@@ -8099,17 +8115,24 @@ int CvPlayer::getInflationMod10000() const
 		iInflationPerTurnTimes10000 = getModifiedIntValue(iInflationPerTurnTimes10000, iMod);
 	}
 
-	if (isNormalAI())
+	try
 	{
-		iMod = (
-			GC.getHandicapInfo(GC.getGame().getHandicapType()).getAIInflationPercent() - 100
-			+
-			GC.getHandicapInfo(GC.getGame().getHandicapType()).getAIPerEraModifier() * getCurrentEra()
-		);
-		if (iMod != 0)
+		if (isNormalAI())
 		{
-			iInflationPerTurnTimes10000 = getModifiedIntValue(iInflationPerTurnTimes10000, iMod);
+			CvHandicapInfo * handicap = &(GC.getHandicapInfo(GC.getGame().getHandicapType()));
+			if (handicap != NULL)
+			iMod = (
+				handicap->getAIInflationPercent() - 100
+				+
+				handicap->getAIPerEraModifier() * getCurrentEra()
+			);
+			if (iMod != 0)
+			{
+				iInflationPerTurnTimes10000 = getModifiedIntValue(iInflationPerTurnTimes10000, iMod);
+			}
 		}
+	}
+	catch (...) { // Exception on Load Save
 	}
 	return 10000 + iInflationPerTurnTimes10000;
 }
@@ -12072,10 +12095,11 @@ void CvPlayer::setTurnActive(bool bNewValue, bool bDoTurn)
 {
 	PROFILE_FUNC();
 
+	bool bFinancialTrouble = false;
+	
 	if (m_bTurnActive != bNewValue)
 	{
 		m_bTurnActive = bNewValue;
-
 		if (bNewValue)
 		{
 			PROFILE("CvPlayer::setTurnActive.SetActive");
@@ -12091,7 +12115,10 @@ void CvPlayer::setTurnActive(bool bNewValue, bool bDoTurn)
 				sprintf(szOut, "Player %d Turn ON\n", getID());
 				gDLL->messageControlLog(szOut);
 			}
-
+			if (GC.getGame().getGameTurn() > 10)
+			{  // Calvitix, problem on Scenario creation
+				bFinancialTrouble = AI_isFinancialTrouble();
+			}
 			if (gPlayerLogLevel > 0)
 			{
 				PROFILE("CvPlayer::setTurnActive.SetActive.Log0");
@@ -12136,7 +12163,7 @@ void CvPlayer::setTurnActive(bool bNewValue, bool bDoTurn)
 
 					logBBAI("	Player %d (%S) has %d cities, %d pop, %d power, %d tech percent", getID(), getCivilizationDescription(0), getNumCities(), getTotalPopulation(), getPower(), GET_TEAM(getTeam()).getBestKnownTechScorePercent());
 
-					if( GET_PLAYER(getID()).AI_isFinancialTrouble() )
+					if(bFinancialTrouble)
 					{
 						logBBAI("	Financial trouble!");
 					}
@@ -12334,12 +12361,18 @@ void CvPlayer::setTurnActive(bool bNewValue, bool bDoTurn)
 
 			GC.getGame().changeNumGameTurnActive(-1);
 
+			if (GC.getGame().getGameTurn() > 10)
+			{  // Calvitix, problem on Scenario creation
+				bFinancialTrouble = AI_isFinancialTrouble();
+			}
 			if (bDoTurn)
 			{
 				PROFILE("CvPlayer::setTurnActive.SetInactive.doTurn");
 
 #ifdef USE_UNIT_TENDERING
-				if (isAlive() && !isHumanPlayer())
+				//const PlayerTypes eOwner = getOwner();
+				//CvPlayerAI& player = GET_PLAYER(eOwner);
+				if (isAlive() && !isHumanPlayer() &&!bFinancialTrouble)
 				{
 					getContractBroker().finalizeTenderContracts();
 				}
@@ -30540,6 +30573,11 @@ int CvPlayer::getAmbushingUnit() const
 	return m_iAmbushingUnit;
 }
 
+int CvPlayer::getAmbushingTargetUnit() const
+{
+	return m_iAmbushingTargetUnit;
+}
+
 bool CvPlayer::isAssassinate() const
 {
 	return m_bAssassinate;
@@ -30551,6 +30589,11 @@ void CvPlayer::setAmbushingUnit(int iNewValue, bool bAssassinate)
 	m_bAssassinate = bAssassinate;
 }
 
+void CvPlayer::setAmbushingTargetUnit(int iNewValue, bool bAssassinate)
+{
+	m_iAmbushingTargetUnit = iNewValue;
+	//m_bAssassinate = bAssassinate;
+}
 
 void CvPlayer::setGreatGeneralPointsForType(const UnitTypes eUnit, const int iValue)
 {
@@ -31080,3 +31123,26 @@ int CvPlayer::getHeritageCommerceEraChange(const CommerceTypes eType, const EraT
 	}
 	return iCommerce100;
 }
+
+#ifdef CVARMY_BREAKSAVE
+
+CvArmy* CvPlayer::getArmy(int iArmyID) const
+{
+	if (iArmyID < 0)
+		return NULL;
+
+	// FFreeListTrashArray fournit getAt(id) qui retourne NULL si l'objet n'existe pas
+	return m_armies.getAt(iArmyID);
+}
+
+void CvPlayer::deleteArmy(int iArmyID)
+{
+	CvArmy* pArmy = m_armies.getAt(iArmyID);
+	if (pArmy != NULL)
+	{
+		pArmy->disband();       // nettoyer les groupes
+		m_armies.removeAt(iArmyID); // supprime l’objet de la liste
+	}
+}
+
+#endif
